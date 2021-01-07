@@ -802,5 +802,224 @@ namespace QBCodePay.Properties
         }
 
         #endregion
+        #region "返金API"
+        /// <summary>
+        /// 返金API リクエスト送信用(PUT METHOD)
+        /// </summary>
+        [JsonObject("repayReq")]
+        public class RepayReq
+        {
+            /// <summary>
+            /// 返金伝票番号(店舗単位で一意の番号)
+            /// 半角数字(20桁固定)-必須
+            /// </summary>
+            [JsonProperty("refund_id")]
+            public string Refund_id;
+            /// <summary>
+            /// 対象支払伝票番号
+            /// (返金対象の支払伝票番号「QRコード支払（ CPM ）」API 実行時に発番した支払伝票番号)
+            /// 半角数字(20桁固定)-必須
+            /// </summary>
+            [JsonProperty("order_id")]
+            public string Order_id;
+            /// <summary>
+            /// 端末識別番号
+            /// 管理画面が発行した端末ユーザID（加盟店管理画面にて作成)
+            /// 半角英数(128桁可変)
+            /// </summary>
+            [JsonProperty("serialNo")]
+            public string SerialNo;
+            /// <summary>
+            /// 返金金額
+            /// 返金できない金額が設定された場合、レスポンスがエラーとなる 。
+            /// 半角数字(8桁可変)-必須
+            /// </summary>
+            [JsonProperty("fee")]
+            public int Fee;
+        }
+        [JsonObject("repayRes")]
+        public class RepayRes
+        {
+            /// <summary>
+            /// 結果コード
+            /// 半角英数記号(30桁可変-必須)
+            /// </summary>
+            [JsonProperty("returnCode")]
+            public string ReturnCode;
+            /// <summary>
+            /// 結果メッセージ
+            /// 全半角文字(200Byte可変)
+            /// </summary>
+            [JsonProperty("returnMessage")]
+            public string ReturnMessage;
+            /// <summary>
+            /// 集約結果コード
+            /// 半角英数(5桁-必須)
+            /// </summary>
+            [JsonProperty("msgSummaryCode")]
+            public string MsgSummaryCode;
+            /// <summary>
+            /// 結果詳細(第2階層へ)
+            /// </summary>
+            [JsonProperty("result")]
+            public RepayResult Result;
+            /// <summary>
+            /// 利用後残高
+            /// 半角数字(10桁-可変)
+            /// </summary>
+            [JsonProperty("balanceAmount")]
+            public int BalanceAmount;
+        }
+        /// <summary>
+        /// 返金API 結果詳細(第2階層)
+        /// </summary>
+        [JsonObject("repayResult")]
+        public class RepayResult
+        {
+            /// <summary>
+            /// 返金伝票番号
+            /// 半角数字(20桁固定)-リクエスト返金伝票番号と同じ
+            /// </summary>
+            [JsonProperty("partner_refund_id")]
+            public string Partner_refund_id;
+            /// <summary>
+            /// 決済会社の返金ID
+            /// 半角英数(128桁可変)
+            /// </summary>
+            [JsonProperty("refund_id")]
+            public string Refund_id;
+            /// <summary>
+            /// 通貨
+            /// 半角英大文字(3桁固定)
+            /// </summary>
+            [JsonProperty("currency")]
+            public string Currency;
+            /// <summary>
+            /// 実行結果コード
+            /// 半角英字(32桁可変)
+            /// </summary>
+            [JsonProperty("return_code")]
+            public string Return_code;
+            /// <summary>
+            /// 処理結果コード
+            /// 半角英字記号(32桁可変)
+            /// </summary>
+            [JsonProperty("result_code")]
+            public string Result_code;
+            /// <summary>
+            /// 対象支払伝票番号
+            /// 半角数字(20桁固定)
+            /// </summary>
+            [JsonProperty("partner_order_id")]
+            public string Partner_order_id;
+            /// <summary>
+            /// 返金金額
+            /// 半角数字(8桁可変)
+            /// </summary>
+            [JsonProperty("amount")]
+            public int Amount;
+            /// <summary>
+            /// 決済種別
+            /// 半角英字(8桁可変)
+            /// </summary>
+            [JsonProperty("channel")]
+            public string Channel;
+            /// <summary>
+            /// 決済会社の支払決済ID
+            /// 半角英数字(128桁可変)
+            /// </summary>
+            [JsonProperty("order_id")]
+            public string Order_id;
+            /// <summary>
+            /// レコード作成日時
+            /// 半角数字記号(19桁固定)-YYYY/MM/DD HH:MM:SS
+            /// </summary>
+            [JsonProperty("create_time")]
+            public string Create_time;
+            /// <summary>
+            /// 返金日時
+            /// 半角数字記号(19桁固定)-YYYY/MM/DD HH:MM:SS
+            /// result_code(処理結果コード)="WAITING"(支払待ち)の場合は設定なし
+            /// </summary>
+            [JsonProperty("pay_time")]
+            public string Pay_time;
+            /// <summary>
+            /// 要求決済金額
+            /// 半角数字(8桁可変)-元支払伝票の決済リクエスト時の決済金額
+            /// </summary>
+            [JsonProperty("total_fee")]
+            public int Total_fee;
+            /// <summary>
+            /// 決済金額
+            /// 半角数字(8桁可変)-要求決済金額と同じ値
+            /// </summary>
+            [JsonProperty("real_fee")]
+            public int Real_fee;
+            /// 削除予定フィールド
+            /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
+            [JsonProperty("sum_refund_fee")]
+            public string Sum_refund_fee;
+            /// 削除予定フィールド
+            /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
+            [JsonProperty("return_msg")]
+            public string Return_msg;
+            /// 削除予定フィールド
+            /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
+            [JsonProperty("codeUrl")]
+            public string CodeUrl;
+            /// 削除予定フィールド
+            /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
+            [JsonProperty("record_id")]
+            public string Record_id;
+            /// 削除予定フィールド
+            /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
+            [JsonProperty("record_type")]
+            public string Record_type;
+            /// 削除予定フィールド
+            /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
+            [JsonProperty("transaction_time")]
+            public string Transaction_time;
+            /// 削除予定フィールド
+            /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
+            [JsonProperty("type")]
+            public string Type;
+            /// 削除予定フィールド
+            /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
+            [JsonProperty("pre_authorization")]
+            public string Pre_authorization;
+            /// 削除予定フィールド
+            /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
+            [JsonProperty("total_amount")]
+            public string Total_amount;
+            /// 削除予定フィールド
+            /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
+            [JsonProperty("input_amount")]
+            public string Input_amount;
+            /// 削除予定フィールド
+            /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
+            [JsonProperty("customer_payment_amount")]
+            public string Customer_payment_amount;
+            /// 削除予定フィールド
+            /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
+            [JsonProperty("exchange_rate")]
+            public string Exchange_rate;
+            /// 削除予定フィールド
+            /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
+            [JsonProperty("remark")]
+            public string Remark;
+            /// 削除予定フィールド
+            /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
+            [JsonProperty("settle_amount")]
+            public string Settle_amount;
+            /// 削除予定フィールド
+            /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
+            [JsonProperty("refund_fee")]
+            public string Refund_fee;
+            /// 削除予定フィールド
+            /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
+            [JsonProperty("tip_amount")]
+            public string Tip_amount;
+        }
+        #endregion
     }
 }
