@@ -806,8 +806,8 @@ namespace QBCodePay.Properties
         /// <summary>
         /// 返金API リクエスト送信用(PUT METHOD)
         /// </summary>
-        [JsonObject("repayReq")]
-        public class RepayReq
+        [JsonObject("reFoundReq")]
+        public class ReFoundReq
         {
             /// <summary>
             /// 返金伝票番号(店舗単位で一意の番号)
@@ -837,8 +837,8 @@ namespace QBCodePay.Properties
             [JsonProperty("fee")]
             public int Fee;
         }
-        [JsonObject("repayRes")]
-        public class RepayRes
+        [JsonObject("reFoundRes")]
+        public class ReFoundRes
         {
             /// <summary>
             /// 結果コード
@@ -862,7 +862,7 @@ namespace QBCodePay.Properties
             /// 結果詳細(第2階層へ)
             /// </summary>
             [JsonProperty("result")]
-            public RepayResult Result;
+            public ReFoundResult Result;
             /// <summary>
             /// 利用後残高
             /// 半角数字(10桁-可変)
@@ -873,8 +873,8 @@ namespace QBCodePay.Properties
         /// <summary>
         /// 返金API 結果詳細(第2階層)
         /// </summary>
-        [JsonObject("repayResult")]
-        public class RepayResult
+        [JsonObject("reFoundResult")]
+        public class ReFoundResult
         {
             /// <summary>
             /// 返金伝票番号
@@ -1027,8 +1027,8 @@ namespace QBCodePay.Properties
         /// 「返金」APIにて要求した返金処理の結果照会を行うAPI
         /// 結果が取得できるまでの間、一定間隔にて繰り返し本APIの呼び出しを実施 する
         /// </summary>
-        [JsonObject("rePayChk")]
-        public class RePayChk
+        [JsonObject("reFoundChk")]
+        public class ReFoundChk
         {
             /// <summary>
             /// 結果コード
@@ -1058,7 +1058,7 @@ namespace QBCodePay.Properties
             /// 結果詳細(第2階層へ)
             /// </summary>
             [JsonProperty("result")]
-            public RePayChkResult Result;
+            public ReFoundChkResult Result;
             /// <summary>
             /// 利用後残高
             /// 半角数字10桁可変
@@ -1069,8 +1069,8 @@ namespace QBCodePay.Properties
         /// <summary>
         /// 返金結果確認API 結果詳細(第2階層)
         /// </summary>
-        [JsonObject("rePayChkResult")]
-        public class RePayChkResult
+        [JsonObject("reFoundChkResult")]
+        public class ReFoundChkResult
         {
             /// <summary>
             /// 返金伝票番号
@@ -1291,6 +1291,258 @@ namespace QBCodePay.Properties
             /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
             [JsonProperty("payAmount")]
             public string PayAmount;
+        }
+        #endregion
+
+        #region "取引記録照会(店舗単位)API"
+        /// <summary>
+        /// 取引記録照会(店舗単位)API(GET METHOD)
+        /// </summary>
+        [JsonObject("storeTradeView")]
+        public class StoreTradeView
+        {
+            /// <summary>
+            /// 結果コード
+            /// 半角英数記号(30桁可変)
+            /// </summary>
+            [JsonProperty("returnCode")]
+            public string ReturnCode;
+            /// <summary>
+            /// 結果メッセージ
+            /// 全半角文字200byte可変
+            /// </summary>
+            [JsonProperty("returnMessage")]
+            public string ReturnMessage;
+            /// <summary>
+            /// 集約結果コード
+            /// 半角英数5桁固定
+            /// </summary>
+            [JsonProperty("msgSummaryCode")]
+            public string MsgSummaryCode;
+            /// <summary>
+            /// 集約結果メッセージ
+            /// 全半角文字200byte可変
+            /// </summary>
+            [JsonProperty("msgSummary")]
+            public string MsgSummary;
+            /// <summary>
+            /// 結果詳細(第2階層へ)
+            /// </summary>
+            [JsonProperty("result")]
+            public StoreTradeViewResult Result;
+            /// <summary>
+            /// 利用後残高
+            /// 半角数字10桁可変
+            /// </summary>
+            [JsonProperty("balanceAmount")]
+            public int BalanceAmount;
+        }
+        /// <summary>
+        /// 結果詳細(第2階層)
+        /// </summary>
+        [JsonObject("storeTradeViewResult")]
+        public class StoreTradeViewResult
+        {
+            /// <summary>
+            /// 処理結果コード
+            /// 半角英字20桁可変("Success":正常(固定))
+            /// </summary>
+            [JsonProperty("return_code")]
+            public string Return_code;
+            /// <summary>
+            /// 注文日
+            /// 日付(YYYYMMDD)
+            /// </summary>
+            [JsonProperty("orderDate")]
+            public string OrderDate;
+            /// 削除予定フィールド
+            /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
+            [JsonProperty("result_code")]
+            public string Result_code;
+            /// 削除予定フィールド
+            /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
+            [JsonProperty("transaction_count")]
+            public string Transaction_count;
+            /// 削除予定フィールド
+            /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
+            [JsonProperty("order_count")]
+            public string Rrder_count;
+            /// 削除予定フィールド
+            /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
+            [JsonProperty("refund_count")]
+            public string Refund_count;
+            /// <summary>
+            /// 取引データ詳細(第3階層へ)
+            /// </summary>
+            [JsonProperty("data")]
+            public StoreTradeViewLine Data;
+        }
+        /// <summary>
+        /// 取引データ詳細(第3階層)
+        /// </summary>
+        [JsonObject("storeTradeViewLine")]
+        public class StoreTradeViewLine
+        {
+            /// <summary>
+            /// レコードタイプ
+            /// 半角英数10桁可変
+            /// </summary>
+            [JsonProperty("record_type")]
+            public string Record_type;
+            /// <summary>
+            /// 決済ステータス
+            /// 半角英大文字20桁可変
+            /// </summary>
+            [JsonProperty("status")]
+            public string Status;
+            /// <summary>
+            /// 支払伝票番号
+            /// 半角英数20桁固定
+            /// </summary>
+            [JsonProperty("partner_order_id")]
+            public string Partner_order_id;
+            /// <summary>
+            /// 通貨
+            /// 半角英大文字3桁固定
+            /// </summary>
+            [JsonProperty("currency")]
+            public string Currency;
+            /// <summary>
+            /// レコード作成日時
+            /// 半角数字記号19桁固定(YYYY/MM/DD HH:MM:SS)
+            /// </summary>
+            [JsonProperty("create_time")]
+            public string Create_time;
+            /// <summary>
+            /// 決済種別
+            /// 半角英字32桁可変
+            /// </summary>
+            [JsonProperty("channel")]
+            public string Channel;
+            /// <summary>
+            /// 支払金額
+            /// 半角数字8桁可変
+            /// </summary>
+            [JsonProperty("real_fee")]
+            public int Real_fee;
+            /// <summary>
+            /// 返金金額合計
+            /// 半角数字8桁可変
+            /// </summary>
+            [JsonProperty("sum_refund_fee")]
+            public int Sum_refund_fee;
+            /// <summary>
+            /// 取引日時
+            /// 半角数字記号19桁固定
+            /// </summary>
+            [JsonProperty("pay_time")]
+            public string Pay_time;
+            /// <summary>
+            /// 要求決済金額
+            /// 半角数字8桁可変
+            /// </summary>
+            [JsonProperty("total_fee")]
+            public int Total_fee;
+            /// <summary>
+            /// 取引備考
+            /// 全半角文字50byte可変
+            /// </summary>
+            [JsonProperty("order_body")]
+            public string Order_body;
+            /// <summary>
+            /// 決済会社の支払決済ID
+            /// 半角英数字128桁可変
+            /// </summary>
+            [JsonProperty("order_id")]
+            public string Order_id;
+            /// <summary>
+            /// 返金伝票番号
+            /// 半角数字20桁固定
+            /// </summary>
+            [JsonProperty("partner_refund_id")]
+            public string Partner_refund_id;
+            /// <summary>
+            /// 決済会社の返金ID
+            /// 半角英数字128桁可変
+            /// </summary>
+            [JsonProperty("refund_id")]
+            public string Refund_id;
+            /// <summary>
+            /// 返金金額
+            /// 半角数字8桁可変
+            /// </summary>
+            [JsonProperty("refund_fee")]
+            public int Refund_fee;
+            /// <summary>
+            /// これ以降は削除予定項目
+            /// </summary>
+            [JsonProperty("return_code")]
+            public string Return_code;
+            [JsonProperty("return_msg")]
+            public string Return_msg;
+            [JsonProperty("result_code")]
+            public string Result_code;
+            [JsonProperty("codeUrl")]
+            public string CodeUrl;
+            [JsonProperty("record_id")]
+            public string Record_id;
+            [JsonProperty("transaction_time")]
+            public string Transaction_time;
+            [JsonProperty("type")]
+            public string Type;
+            [JsonProperty("pre_authorization")]
+            public string Pre_authorization;
+            [JsonProperty("total_amount")]
+            public string Total_amount;
+            [JsonProperty("input_amount")]
+            public string Input_amount;
+            [JsonProperty("customer_payment_amount")]
+            public string Customer_payment_amount;
+            [JsonProperty("exchange_rate")]
+            public string Exchange_rate;
+            [JsonProperty("remark")]
+            public string Remark;
+            [JsonProperty("settle_amount")]
+            public string Settle_amount;
+            [JsonProperty("amount")]
+            public string Amount;
+            [JsonProperty("tip_amount")]
+            public string Tip_amount;
+            [JsonProperty("partner_code")]
+            public string Partner_code;
+            [JsonProperty("clearing_status")]
+            public string Clearing_status;
+            [JsonProperty("gateway")]
+            public string Gateway;
+            [JsonProperty("agencyFullName")]
+            public string AgencyFullName;
+            [JsonProperty("partnerFullName")]
+            public string PartnerFullName;
+            [JsonProperty("partner_name")]
+            public string Partner_name;
+            [JsonProperty("merchantId")]
+            public string MerchantId;
+            [JsonProperty("merchantCode")]
+            public string MerchantCode;
+            [JsonProperty("merchantFullName")]
+            public string MerchantFullName;
+            [JsonProperty("merchantName")]
+            public string MerchantName;
+            [JsonProperty("orderId")]
+            public string OrderId;
+            [JsonProperty("merchantOrderId")]
+            public string MerchantOrderId;
+            [JsonProperty("rate")]
+            public string Rate;
+            [JsonProperty("res_result_code")]
+            public string Res_result_code;
+            [JsonProperty("ipAddress")]
+            public string IpAddress;
+            [JsonProperty("billingNumber")]
+            public string BillingNumber;
+            [JsonProperty("payAmount")]
+            public string PayAmount;
+
         }
         #endregion
     }
