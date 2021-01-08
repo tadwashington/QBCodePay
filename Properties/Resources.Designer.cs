@@ -9,7 +9,7 @@
 //------------------------------------------------------------------------------
 
 
-namespace QBCodePay.Properties
+namespace QBCodePay.Jsons
 {
     /// <summary>
     ///   ローカライズされた文字列などを検索するための、厳密に型指定されたリソース クラスです。
@@ -43,7 +43,7 @@ namespace QBCodePay.Properties
             {
                 if ((resourceMan == null))
                 {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("QBCodePay.Properties.Resources", typeof(Resources).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("QBCodePay.MakeJsons.Resources", typeof(Resources).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;

@@ -49,7 +49,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Properties\Jsons.cs" />
+    <Compile Include="MakeJsons.cs" />
     <Compile Include="QBCodePay.cs">
       <SubType>Form</SubType>
     </Compile>

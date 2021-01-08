@@ -10,14 +10,15 @@ using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
 
 
-namespace QBCodePay.Properties
+namespace QBCodePay
 {
+    #region "JSON定義クラス"
     /// <summary>
     /// 各種取引JSON定義集
     /// </summary>
-    class Jsons
+    class MakeJsons
     {
-#region "ユーザー認証送信用JSONフォーマット定義"
+        #region "ユーザー認証送信用JSONフォーマット定義"
 
         /// <summary>
         /// ユーザー認証送信用JSON
@@ -280,7 +281,7 @@ namespace QBCodePay.Properties
             /// 支払金額
             /// </summary>
             [JsonProperty("price")]
-            public string Price;
+            public int Price;
             /// <summary>
             /// 決済QRコード
             /// </summary>
@@ -1544,5 +1545,19 @@ namespace QBCodePay.Properties
             public string PayAmount;
         }
         #endregion
+
+        #region "JSON編集メソッド"
+        /// <summary>
+        /// QRコード支払(CPM)API PUTリクエストJSON編集
+        /// </summary>
+        /// <param name="cpm"></param>
+        public void EditPutCPM(ref CpmReq cpm)
+        {
+
+        }
+
+        #endregion
     }
+    #endregion
+
 }

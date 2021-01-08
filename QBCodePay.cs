@@ -13,6 +13,12 @@ using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography;
 
+// Json用参照ライブラリ
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Serialization;
+
+
 
 namespace QBCodePay
 {
@@ -92,7 +98,18 @@ namespace QBCodePay
                 this.txtEndPint.Focus();
                 return;
             }
-            PutApiFrmUrl(this.txtEndPint.Text);
+
+            string jdata = string.Empty;
+            if (PutCPM(ref jdata))
+            {
+                // Put Method Request送信(jdata:JSONフォーマット)
+                PutApiFrmUrl(this.txtEndPint.Text,jdata);
+            }
+            else
+            {
+                MessageBox.Show("PUT METHOD RequestJSONファイルの生成に失敗しました。","JSONファイル生成エラー");
+            }
+
             this.txtEndPint.SelectAll();
             this.txtEndPint.Focus();
 
@@ -143,14 +160,16 @@ namespace QBCodePay
         /// <summary>
         /// PUT METHOD
         /// </summary>
-        /// <param name="s"></param>
-        private async void PutApiFrmUrl(string s)
+        /// <param name="s">URL</param>
+        /// <param name="jdata">JSON DATA</param>
+        private async void PutApiFrmUrl(string s,string jdata = "")
         {
 
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             try
             {
-                HttpContent content = null;
+                // JSONデータ添付
+                HttpContent content = new StringContent(jdata,Encoding.UTF8,"application/json");
                 // HttpHeader編集
                 var client = new HttpClient();
                 AddHttpHeader2(ref client);
@@ -291,6 +310,36 @@ namespace QBCodePay
             byte[] vs1 = hA256.ComputeHash(vs);
             ret = BitConverter.ToString(vs1).ToLower();
             Console.WriteLine(ret);
+            return ret;
+        }
+
+        private bool PutCPM(ref string jdata)
+        {
+            bool ret = true;
+            try
+            {
+                // JSONクラス
+                MakeJsons jsons = new MakeJsons();
+                // CPMリクエスト JSON定義
+                var req = new MakeJsons.CpmReq();
+                // Requestパラメタ設定
+                req.Order_id = "11234567890123456789";
+                req.SerialNo = "KONAMISPORTS CLUB HONTEN-4501001";
+                req.Description = "テストの取引備考でざます";
+                req.Price = 500;
+                req.Auth_code = "0001002003004005006007008009";
+                req.Currency = "JPY";
+                req.Operator = "abcdefg001";
+                // JSON シリアライズ(JSONフォーマットテキスト)
+                var JsonData = JsonConvert.SerializeObject(req);
+                jdata = JsonData;
+
+                Console.WriteLine("CPM PUT JSON:{0}", JsonData);
+            }
+            catch
+            {
+                ret = false;
+            }
             return ret;
         }
     }
