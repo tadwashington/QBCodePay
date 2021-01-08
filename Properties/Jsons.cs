@@ -1542,7 +1542,6 @@ namespace QBCodePay.Properties
             public string BillingNumber;
             [JsonProperty("payAmount")]
             public string PayAmount;
-
         }
         #endregion
     }
