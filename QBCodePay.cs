@@ -100,6 +100,7 @@ namespace QBCodePay
             }
 
             string jdata = string.Empty;
+            // QRコード支払(CPM)API[PUT METHOD]用 jsonデータ生成～httpRequest送信
             if (PutCPM(ref jdata))
             {
                 // Put Method Request送信(jdata:JSONフォーマット)
@@ -179,11 +180,39 @@ namespace QBCodePay
                 {
                     Console.WriteLine("PUT成功！");
                     var g = await res.Content.ReadAsStringAsync();
-                    MessageBox.Show(g, "帰ってきたパラメタ");
+                    if (!string.IsNullOrEmpty(g))
+                    {
+                        MakeJsons.CpmRes cpm = new MakeJsons.CpmRes();
+                        cpm = JsonConvert.DeserializeObject<MakeJsons.CpmRes>(g);
+                        string cpmres =
+                            string.Format("ReturnCode:{0}", cpm.ReturnCode) + "\r\n" +
+                            string.Format("ReturnMessage:{0}", cpm.ReturnMessage) + "\r\n" +
+                            string.Format("MsgSummaryCode:{0}", cpm.MsgSummaryCode) + "\r\n" +
+                            string.Format("MsgSummary:{0}", cpm.MsgSummary) + "\r\n" +
+                            string.Format("Result.Partner_order_id:{0}", cpm.Result.Partner_order_id) + "\r\n" +
+                            string.Format("Result.Currency:{0}", cpm.Result.Currency) + "\r\n" +
+                            string.Format("Result.Order_id:{0}", cpm.Result.Order_id) + "\r\n" +
+                            string.Format("Result.Return_code:{0}", cpm.Result.Return_code) + "\r\n" +
+                            string.Format("Result.Result_code:{0}", cpm.Result.Result_code) + "\r\n" +
+                            string.Format("Result.Create_time:{0}", cpm.Result.Create_time) + "\r\n" +
+                            string.Format("Result.Total_fee:{0}", cpm.Result.Total_fee.ToString()) + "\r\n" +
+                            string.Format("Result.Real_fee:{0}", cpm.Result.Real_fee.ToString()) + "\r\n" +
+                            string.Format("Result.Channel:{0}", cpm.Result.Channel) + "\r\n" +
+                            string.Format("Result.Pay_time:{0}", cpm.Result.Pay_time) + "\r\n" +
+                            string.Format("Result.Order_body:{0}", cpm.Result.Order_body) + "\r\n" +
+                            string.Format("BalanceAmount:{0}", cpm.BalanceAmount.ToString());
+
+                        MessageBox.Show(cpmres, "帰ってきたjsonパラメタ");
+                    }
+                    else
+                    {
+                        MessageBox.Show("Null had come...", "帰ってきたjsonパラメタ");
+
+                    }
                 }
                 else
                 {
-                    Console.WriteLine("PUT失敗！");
+                    Console.WriteLine("PUT失敗！");    
                     var g = res.StatusCode.ToString();
                     MessageBox.Show(g, "PUT失敗のStatusCode");
                 }
@@ -312,7 +341,11 @@ namespace QBCodePay
             Console.WriteLine(ret);
             return ret;
         }
-
+        /// <summary>
+        /// QRコード支払(CPM)API[PUT METHOD]用 jsonデータ生成
+        /// </summary>
+        /// <param name="jdata">送信jsonデータ</param>
+        /// <returns></returns>
         private bool PutCPM(ref string jdata)
         {
             bool ret = true;

@@ -334,7 +334,7 @@ namespace QBCodePay
             /// 利用後残高
             /// </summary>
             [JsonProperty("balanceAmount")]
-            public string BalanceAmount;
+            public int BalanceAmount;
         }
         /// <summary>
         /// 詳細結果(第2階層)
@@ -376,12 +376,12 @@ namespace QBCodePay
             /// 要求決済金額
             /// </summary>
             [JsonProperty("total_fee")]
-            public string Total_fee;
+            public int Total_fee;
             /// <summary>
             /// 決済金額
             /// </summary>
             [JsonProperty("real_fee")]
-            public string Real_fee;
+            public int Real_fee;
             /// <summary>
             /// 決済種別
             /// </summary>
