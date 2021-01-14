@@ -24,9 +24,59 @@ namespace QBCodePay
 {
     public partial class QBCodePay : Form
     {
+        #region "コンスタント群"
+        /// <summary>
+        /// Result_Code:PAY_SUCCESS(支払成功)
+        /// </summary>
+        private string cResult_Code_S = "PAY_SUCCESS";
+        /// <summary>
+        /// Result_Code:PAYING(支払待ち)
+        /// </summary>
+        private string cResult_Code_W = "PAYING";
+        /// <summary>
+        /// 結果コード(正常:MP10000)
+        /// 以外は異常と判定する
+        /// </summary>
+        private string cReturnCode = "MP10000";
+        #endregion
+
+        #region "プロパティ群"
+        /// <summary>
+        /// API URL
+        /// </summary>
+        public string pUrl { get; set; }
+        /// <summary>
+        /// GET METHOD Pauling間隔(ミリ秒)
+        /// </summary>
+        public int pPollTime { get; set; }
+        /// <summary>
+        /// QRコード支払いタイムアウト(MAX30秒)
+        /// </summary>
+        public int pCPMTimeOut { get; set; }
+        /// <summary>
+        /// 返金タイムアウト(MAX300秒)
+        /// </summary>
+        public int pRefundTimeOut { get; set; }
+        #endregion
+        #region "インスタンス群"
+        /// <summary>
+        /// QRコード支払レスポンスJSONクラスインスタンス
+        /// </summary>
+        MakeJsons.CpmRes cpm;
+        /// <summary>
+        /// 支払い確認APIレスポンスJSONクラスインスタンス
+        /// </summary>
+        MakeJsons.CpmCheck resp;
+        #endregion
         public QBCodePay()
         {
             InitializeComponent();
+            // GET METHOD Pauling間隔を設定(2秒以上)
+            pPollTime = 2000;
+            // QRコード支払いTimeOut設定(30秒)
+            pCPMTimeOut = 30000;
+            // 返金TimeOut設定(300秒)
+            pRefundTimeOut = 300000;
         }
         /// <summary>
         /// EndPoint入力チェック
@@ -76,15 +126,52 @@ namespace QBCodePay
         /// <param name="e"></param>
         private void btnGets_Click(object sender, EventArgs e)
         {
-            if (!ChkEndPoint(this.txtEndPint.Text))
-            {
-                this.txtEndPint.Focus();
-                return;
-            }
-
-            GetApiFrmUrl(this.txtEndPint.Text);
+            pUrl = this.txtEndPint.Text;
+            // GET METHOD実行
+            Get_Method();
             this.txtEndPint.SelectAll();
             this.txtEndPint.Focus();
+        }
+        /// <summary>
+        /// GET METHOD
+        /// </summary>
+        private async void Get_Method()
+        {
+            if (!ChkEndPoint(pUrl))
+            {
+                return;
+            }
+            bool rtn = await GetApiFrmUrl(pUrl);
+            /* 
+             * APIレスポンスのReturn_Codeが"MP10000(処理正常)"でかつメソッドリターンがfalseの場合は 
+             * 支払待ちと判定し支払確認(GET METHOD)のPaulingを行う
+             */
+            if ((resp.ReturnCode == cReturnCode) && (rtn = false))
+            {
+                while (true)
+                {
+                    // GET METHOD PAULING
+                    if (await GetPauling() == true)
+                    {
+                        // 処理正常でかつ支払完了ならPAULING終了
+                        if ((resp.ReturnCode == cReturnCode) && (resp.Result.Result_code == cResult_Code_S))
+                        {
+                            // 支払完了
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        if ((resp.ReturnCode != cReturnCode))
+                        {
+                            // エラー処理へ
+                            break;
+                        }
+
+                    }
+                }
+            }
+
         }
         /// <summary>
         /// PUTボタンクリック
@@ -93,9 +180,21 @@ namespace QBCodePay
         /// <param name="e"></param>
         private void btnPuts_Click(object sender, EventArgs e)
         {
-            if (!ChkEndPoint(this.txtEndPint.Text))
+            pUrl = this.txtEndPint.Text;
+            // PUT METHOD実行
+            Put_Method();
+
+            this.txtEndPint.SelectAll();
+            this.txtEndPint.Focus();
+
+        }
+        /// <summary>
+        /// PUT METHOD 
+        /// </summary>
+        private async void Put_Method()
+        {
+            if (!ChkEndPoint(pUrl))
             {
-                this.txtEndPint.Focus();
                 return;
             }
 
@@ -104,50 +203,145 @@ namespace QBCodePay
             if (PutCPM(ref jdata))
             {
                 // Put Method Request送信(jdata:JSONフォーマット)
-                PutApiFrmUrl(this.txtEndPint.Text,jdata);
+                bool rtn = await PutApiFrmUrl(pUrl, jdata);
+                // メソッドリターンがfalseでAPI処理が正常の場合は支払確認処理をPAULING
+                if  ((!string.IsNullOrEmpty(cpm.ReturnCode)) && (!string.IsNullOrEmpty(cpm.Result.Result_code)))
+                {
+                    if ((rtn == false) && (cpm.ReturnCode == cReturnCode) && (cpm.Result.Result_code == cResult_Code_W))
+                    {
+                        while (true)
+                        {
+                            // GET METHOD PAULING
+                            if (await GetPauling() == true)
+                            {
+                                // 処理正常でかつ支払完了ならPAULING終了
+                                if ((!string.IsNullOrEmpty(resp.ReturnCode)) && (!string.IsNullOrEmpty(resp.Result.Result_code)) && 
+                                    (resp.ReturnCode == cReturnCode) && (resp.Result.Result_code == cResult_Code_S))
+                                {
+                                    // 支払完了
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                if ((!string.IsNullOrEmpty(resp.ReturnCode)) && (resp.ReturnCode != cReturnCode))
+                                {
+                                    // エラー処理へ
+                                    break;
+                                }
+
+                            }
+
+                        }
+                    }
+                }
             }
             else
             {
-                MessageBox.Show("PUT METHOD RequestJSONファイルの生成に失敗しました。","JSONファイル生成エラー");
+                MessageBox.Show("PUT METHOD RequestJSONファイルの生成に失敗しました。", "JSONファイル生成エラー");
             }
-
-            this.txtEndPint.SelectAll();
-            this.txtEndPint.Focus();
 
         }
         /// <summary>
         /// Get Method
         /// </summary>
         /// <param name="s"></param>
-        private async void GetApiFrmUrl(string s)
+        private async Task<bool> GetApiFrmUrl(string s,int refund = 0)
         {
-
+            bool rtn = false;
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             try
             {
+                // クエリパラメタ追記
+                /*
+                 * GETデータ（クエリパラメータ）
+                 * storeOrderId(支払伝票番号)固定20桁を設定する
+                 */
+                // urlの末尾に「/」がない場合は追記する
+                if (s.Substring(s.Length - 1) != "/")
+                {
+                    s += "/";
+                }
+                // 支払伝票番号(半角数字固定20桁)
+                ulong n;
+                if (refund == 0)
+                {
+                    // 支払伝票番号をセット
+                    n = 11234567890123456789;
+                    // クエリパラメタをセット
+                    s += "?storeOrderId=" + n.ToString();
+                }
                 // HttpHeader編集
                 var client = new HttpClient();
-                AddHttpHeader2(ref client);
-                var res = await client.GetAsync(s);
-
-                /*
-                var request = new HttpRequestMessage(HttpMethod.Get, s);
-                AddHttpHeader(ref request);
-                var res = await client.SendAsync(request);
-                */
-
-                if (res.StatusCode == HttpStatusCode.OK)
+                // QRコード支払と返金処理のパラメタ設定
+                if (refund == 0)
                 {
-                    Console.WriteLine("GET成功！");
-                    var g = await res.Content.ReadAsStringAsync();
-                    MessageBox.Show(g, "帰ってきたパラメタ");
+                    // タイムアウト設定
+                    client.Timeout = TimeSpan.FromMilliseconds(pCPMTimeOut);
                 }
                 else
                 {
+                    // タイムアウト設定
+                    client.Timeout = TimeSpan.FromMilliseconds(pRefundTimeOut);
+                }
+                AddHttpHeader2(ref client);
+                var res = await client.GetAsync(s);
+
+                if (res.StatusCode == HttpStatusCode.OK)
+                {
+                    // GetResponse取得成功
+                    Console.WriteLine("GET成功！");
+                    var g = await res.Content.ReadAsStringAsync();
+                    if (!string.IsNullOrEmpty(g))
+                    {
+                        resp = new MakeJsons.CpmCheck();
+                        resp = JsonConvert.DeserializeObject<MakeJsons.CpmCheck>(g);
+                        // 確認のためアイアログ表示
+                        string rs =
+                            string.Format("ReturnCode:{0} \r\n", resp.ReturnCode) + 
+                            string.Format("ReturnMessage:{0}\r\n", resp.ReturnMessage) +
+                            string.Format("MsgSummaryCode:{0}\r\n", resp.MsgSummaryCode) +
+                            string.Format("MsgSummary:{0}\r\n", resp.MsgSummary) +
+                            string.Format("Result.partner_refund_id:{0}\r\n", resp.Result.partner_refund_id) +
+                            string.Format("Result.Currency:{0}\r\n", resp.Result.Currency) +
+                            string.Format("Result.Order_id:{0}\r\n", resp.Result.Order_id) +
+                            string.Format("Result.Return_code:{0}\r\n", resp.Result.Return_code) +
+                            string.Format("Result.Result_code:{0}\r\n", resp.Result.Result_code) +
+                            string.Format("Result.Real_fee:{0}\r\n", resp.Result.Real_fee) +
+                            string.Format("Result.Channel:{0}\r\n", resp.Result.Channel) +
+                            string.Format("Result.Create_time:{0}\r\n", resp.Result.Create_time) +
+                            string.Format("Result.Total_fee:{0}\r\n", resp.Result.Total_fee) +
+                            string.Format("Result.Pay_time:{0}\r\n", resp.Result.Pay_time) +
+                            string.Format("Result.Refund_fee:{0}\r\n", resp.Result.Refund_fee) +
+                            string.Format("Result.Order_body:{0}\r\n", resp.Result.Order_body) +
+                            string.Format("Result.Status:{0}\r\n", resp.Result.Status) +
+                            string.Format("Result.PartialRefundFlag:{0}\r\n", resp.Result.PartialRefundFlag) +
+                            string.Format("BalanceAmount:{0}\r\n", resp.BalanceAmount)
+                            ;
+                        //MessageBox.Show(rs, "帰ってきたパラメタ");
+                        Console.WriteLine(rs);
+                        // API正常
+                        if (resp.ReturnCode == cReturnCode)
+                        {
+                            // 支払完了
+                            if(resp.Result.Result_code == cResult_Code_S)
+                            {
+                                rtn = true;
+                                MessageBox.Show("支払確認が完了しました。", "支払確認");
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // GetResponse取得失敗
                     Console.WriteLine("GET失敗！");
                     var g = res.StatusCode.ToString();
                     MessageBox.Show(g, "GET失敗のStatusCode");
                 }
+
+                // http client開放
+                client.Dispose();
 
             }
             catch (Exception e)
@@ -157,14 +351,17 @@ namespace QBCodePay
                 MessageBox.Show(string.Format("Exceptionが発生しましたよ。:\r\n{0} \r\ninner Ex:\r\n{1}", e.Message, e.InnerException),
                     "残念ながらGETに失敗してます。");
             }
+
+            return rtn;
         }
         /// <summary>
         /// PUT METHOD
         /// </summary>
         /// <param name="s">URL</param>
         /// <param name="jdata">JSON DATA</param>
-        private async void PutApiFrmUrl(string s,string jdata = "")
+        private async Task<bool> PutApiFrmUrl(string s,string jdata = "",int refund = 0)
         {
+            bool rtn = false;
 
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             try
@@ -173,6 +370,18 @@ namespace QBCodePay
                 HttpContent content = new StringContent(jdata,Encoding.UTF8,"application/json");
                 // HttpHeader編集
                 var client = new HttpClient();
+                // QRコード支払と返金処理の設定を行う
+                if (refund == 0)
+                {
+                    // TimeOut
+                    client.Timeout = TimeSpan.FromMilliseconds(pCPMTimeOut);
+                }
+                else
+                {
+                    // TimeOut
+                    client.Timeout = TimeSpan.FromMilliseconds(pRefundTimeOut);
+                }
+
                 AddHttpHeader2(ref client);
                 var res = await client.PutAsync(s, content);
 
@@ -182,8 +391,9 @@ namespace QBCodePay
                     var g = await res.Content.ReadAsStringAsync();
                     if (!string.IsNullOrEmpty(g))
                     {
-                        MakeJsons.CpmRes cpm = new MakeJsons.CpmRes();
+                        cpm = new MakeJsons.CpmRes();
                         cpm = JsonConvert.DeserializeObject<MakeJsons.CpmRes>(g);
+                        // 確認のためアイアログ表示
                         string cpmres =
                             string.Format("ReturnCode:{0}", cpm.ReturnCode) + "\r\n" +
                             string.Format("ReturnMessage:{0}", cpm.ReturnMessage) + "\r\n" +
@@ -202,12 +412,18 @@ namespace QBCodePay
                             string.Format("Result.Order_body:{0}", cpm.Result.Order_body) + "\r\n" +
                             string.Format("BalanceAmount:{0}", cpm.BalanceAmount.ToString());
 
-                        MessageBox.Show(cpmres, "帰ってきたjsonパラメタ");
+                        Console.WriteLine(cpmres, "帰ってきたjsonパラメタ");
+                        // 処理正常でかつ支払完了時のみ支払確認処理をさせない
+                        if ((cpm.ReturnCode == cReturnCode) && (cpm.Result.Result_code == cResult_Code_S))
+                        {
+                            rtn = true;
+                            MessageBox.Show("支払が完了しました。", "QRコード支払");
+                        }
+
                     }
                     else
                     {
                         MessageBox.Show("Null had come...", "帰ってきたjsonパラメタ");
-
                     }
                 }
                 else
@@ -216,6 +432,8 @@ namespace QBCodePay
                     var g = res.StatusCode.ToString();
                     MessageBox.Show(g, "PUT失敗のStatusCode");
                 }
+                // http client開放
+                client.Dispose();
 
             }
             catch (Exception e)
@@ -225,6 +443,8 @@ namespace QBCodePay
                 MessageBox.Show(string.Format("Exceptionが発生しましたよ。:\r\n{0} \r\ninner Ex:\r\n{1}", e.Message, e.InnerException),
                     "残念ながらPUTに失敗してます。");
             }
+
+            return rtn;
         }
 
         // UNIXエポックを表すDateTimeオブジェクトを取得
@@ -351,8 +571,6 @@ namespace QBCodePay
             bool ret = true;
             try
             {
-                // JSONクラス
-                MakeJsons jsons = new MakeJsons();
                 // CPMリクエスト JSON定義
                 var req = new MakeJsons.CpmReq();
                 // Requestパラメタ設定
@@ -374,6 +592,19 @@ namespace QBCodePay
                 ret = false;
             }
             return ret;
+        }
+        /// <summary>
+        /// GET METHOD PAULING
+        /// 支払確認API実行
+        /// </summary>
+        /// <returns></returns>
+        private async Task<bool> GetPauling()
+        {
+            // PAULING 間隔待機
+            await Task.Delay(pPollTime);
+            // 支払確認API実行
+            return await GetApiFrmUrl(pUrl,0);
+            
         }
     }
 
