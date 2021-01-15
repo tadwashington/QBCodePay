@@ -105,7 +105,7 @@ namespace QBCodePay
             /// 返金時認証要否フラグ
             /// </summary>
             [JsonProperty("authForRefund")]
-            public string AuthForRefund;
+            public int AuthForRefund;
             /// <summary>
             /// レジ番号
             /// </summary>
@@ -186,7 +186,7 @@ namespace QBCodePay
             /// 1：パスワード変更済み 0：初期パスワード未変更
             /// </summary>
             [JsonProperty("pwChangedFlag")]
-            public string PwChangedFlag;
+            public int PwChangedFlag;
             /// <summary>
             /// 削除予定フィールド
             /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
@@ -215,7 +215,7 @@ namespace QBCodePay
             /// 利用可能な決済種別リスト
             /// </summary>
             [JsonProperty("payTypeList")]
-            public PayList PayTypeList;
+            public PayList[] PayTypeList;
         }
         /// <summary>
         /// 決済種別リスト （第三階層）
@@ -227,7 +227,7 @@ namespace QBCodePay
             /// 決済種別ID
             /// </summary>
             [JsonProperty("payTypeId")]
-            public string PayTypeId;
+            public int PayTypeId;
             /// <summary>
             /// 決済種別コード
             /// </summary>
@@ -247,12 +247,12 @@ namespace QBCodePay
             /// MPMフラグ
             /// </summary>
             [JsonProperty("dispQrcodeFlag")]
-            public string DispQrcodeFlag;
+            public int DispQrcodeFlag;
             /// <summary>
             /// CPMフラグ
             /// </summary>
             [JsonProperty("readQrcodeFlag")]
-            public string ReadQrcodeFlag;
+            public int ReadQrcodeFlag;
         }
         #endregion
         #region "QRコード支払（CPM) API"

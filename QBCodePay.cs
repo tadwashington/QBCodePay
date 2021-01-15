@@ -193,6 +193,9 @@ namespace QBCodePay
             this.txtEndPint.Focus();
 
         }
+        /// <summary>
+        /// PUT METHOD
+        /// </summary>
         private async void Post_Method()
         {
             // URL正当性チェック
@@ -204,7 +207,7 @@ namespace QBCodePay
             // ユーザー認証API[POST METHOD]用 jsonデータ生成～httpRequest送信
             if (PostAuthJson(ref jdata))
             {
-
+                await PostApiFrmUrl(pUrl, jdata);
             }
 
         }
@@ -375,7 +378,12 @@ namespace QBCodePay
 
             return rtn;
         }
-
+        /// <summary>
+        /// POST METHOD
+        /// </summary>
+        /// <param name="s"></param>
+        /// <param name="jdata"></param>
+        /// <returns></returns>
         private async Task<bool> PostApiFrmUrl(string s,string jdata = "")
         {
             bool rtn = false;
@@ -410,7 +418,7 @@ namespace QBCodePay
                             string.Format("Result.PartnerFullName:{0}", userAuth.Result.PartnerFullName) + "\r\n" +
                             string.Format("Result.Description:{0}", userAuth.Result.Description) + "\r\n" +
                             string.Format("Result.AdminPassword:{0}", userAuth.Result.AdminPassword) + "\r\n" +
-                            string.Format("Result.AuthForRefund:{0}", userAuth.Result.AuthForRefund) + "\r\n" +
+                            string.Format("Result.AuthForRefund:{0}", userAuth.Result.AuthForRefund.ToString()) + "\r\n" +
                             string.Format("Result.CashNumber:{0}", userAuth.Result.CashNumber) + "\r\n" +
                             string.Format("Result.WarningWord:{0}", userAuth.Result.WarningWord) + "\r\n" +
                             string.Format("Result.CheckSnFlag:{0}", userAuth.Result.CheckSnFlag) + "\r\n" +
@@ -426,9 +434,21 @@ namespace QBCodePay
                             string.Format("Result.ContactHomeUrl:{0}", userAuth.Result.ContactHomeUrl) + "\r\n" +
                             string.Format("Result.QrProvisionMethod:{0}", userAuth.Result.QrProvisionMethod) + "\r\n" +
                             string.Format("Result.MerchantId:{0}", userAuth.Result.MerchantId) + "\r\n" +
-                            string.Format("Result.PwChangedFlag:{0}", userAuth.Result.PwChangedFlag) + "\r\n" +
-                            string.Format("Result.PayTypeList:{0}", userAuth.Result.PayTypeList) + "\r\n" +
-                            string.Format("BalanceAmount:{0}", userAuth.BalanceAmount.ToString());
+                            string.Format("Result.PwChangedFlag:{0}", userAuth.Result.PwChangedFlag.ToString()) + "\r\n" +
+                            string.Format("Result.PayTypeList:{0}", "下記に記載") + "\r\n" +
+                            string.Format("BalanceAmount:{0}", userAuth.BalanceAmount.ToString()) + 
+                            string.Format("=== PayTypeList === \r\n");
+
+                        foreach (MakeJsons.PayList list in userAuth.Result.PayTypeList)
+                        {
+                            authres +=
+                                string.Format("list.PayTypeId:{0} \r\n", list.PayTypeId.ToString()) +
+                                string.Format("list.PayTypeCode:{0} \r\n", list.PayTypeCode) +
+                                string.Format("list.PayTypeName:{0} \r\n", list.PayTypeName) +
+                                string.Format("list.QrcodeRegExr:{0} \r\n", list.QrcodeRegExr) +
+                                string.Format("list.DispQrcodeFlag:{0} \r\n", list.DispQrcodeFlag.ToString()) +
+                                string.Format("list.ReadQrcodeFlag:{0} \r\n", list.ReadQrcodeFlag.ToString());
+                        }
 
                         Console.WriteLine(authres, "帰ってきたjsonパラメタ");
                         rtn = true;
