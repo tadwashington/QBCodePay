@@ -67,6 +67,11 @@ namespace QBCodePay
         /// 支払い確認APIレスポンスJSONクラスインスタンス
         /// </summary>
         MakeJsons.CpmCheck resp;
+        /// <summary>
+        /// ユーザー認証APIレスポンスJSONクラスインスタンス
+        /// </summary>
+        MakeJsons.UserAuthR userAuth;
+
         #endregion
         public QBCodePay()
         {
@@ -188,11 +193,27 @@ namespace QBCodePay
             this.txtEndPint.Focus();
 
         }
+        private async void Post_Method()
+        {
+            // URL正当性チェック
+            if (!ChkEndPoint(pUrl))
+            {
+                return;
+            }
+            string jdata = string.Empty;
+            // ユーザー認証API[POST METHOD]用 jsonデータ生成～httpRequest送信
+            if (PostAuthJson(ref jdata))
+            {
+
+            }
+
+        }
         /// <summary>
         /// PUT METHOD 
         /// </summary>
         private async void Put_Method()
         {
+            // URL正当性チェック
             if (!ChkEndPoint(pUrl))
             {
                 return;
@@ -200,7 +221,7 @@ namespace QBCodePay
 
             string jdata = string.Empty;
             // QRコード支払(CPM)API[PUT METHOD]用 jsonデータ生成～httpRequest送信
-            if (PutCPM(ref jdata))
+            if (PutCPMJson(ref jdata))
             {
                 // Put Method Request送信(jdata:JSONフォーマット)
                 bool rtn = await PutApiFrmUrl(pUrl, jdata);
@@ -354,6 +375,74 @@ namespace QBCodePay
 
             return rtn;
         }
+
+        private async Task<bool> PostApiFrmUrl(string s,string jdata = "")
+        {
+            bool rtn = false;
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+            try
+            {
+                // JSONデータ添付
+                HttpContent content = new StringContent(jdata, Encoding.UTF8, "application/json");
+                // HttpHeader編集
+                var client = new HttpClient();
+                // HttpHeaderの生成・設定
+                AddHttpHeader2(ref client);
+                // POST METHOD
+                var res = await client.PostAsync(s, content);
+                if (res.StatusCode == HttpStatusCode.OK)
+                {
+                    Console.WriteLine("POST成功！");
+                    // Response取得
+                    var g = await res.Content.ReadAsStringAsync();
+                    if (!string.IsNullOrEmpty(g))
+                    {
+                        // Response Jsonデシリアライズ
+                        userAuth = new MakeJsons.UserAuthR();
+                        JsonConvert.DeserializeObject<MakeJsons.UserAuthR>(g);
+                        // 確認のためアイアログ表示
+                        string authres =
+                            string.Format("ReturnCode:{0}", userAuth.ReturnCode) + "\r\n" +
+                            string.Format("ReturnMessage:{0}", userAuth.ReturnMessage) + "\r\n" +
+                            string.Format("MsgSummaryCode:{0}", userAuth.MsgSummaryCode) + "\r\n" +
+                            string.Format("MsgSummary:{0}", userAuth.MsgSummary) + "\r\n" +
+                            string.Format("Result.CredentialKey:{0}", userAuth.Result.CredentialKey) + "\r\n" +
+                            string.Format("Result.PartnerFullName:{0}", userAuth.Result.PartnerFullName) + "\r\n" +
+                            string.Format("Result.Description:{0}", userAuth.Result.Description) + "\r\n" +
+                            string.Format("Result.AdminPassword:{0}", userAuth.Result.AdminPassword) + "\r\n" +
+                            string.Format("Result.AuthForRefund:{0}", userAuth.Result.AuthForRefund) + "\r\n" +
+                            string.Format("Result.CashNumber:{0}", userAuth.Result.CashNumber) + "\r\n" +
+                            string.Format("Result.WarningWord:{0}", userAuth.Result.WarningWord) + "\r\n" +
+                            string.Format("Result.CheckSnFlag:{0}", userAuth.Result.CheckSnFlag) + "\r\n" +
+                            string.Format("Result.MerchantFullName:{0}", userAuth.Result.MerchantFullName) + "\r\n" +
+                            string.Format("Result.MerchantName:{0}", userAuth.Result.MerchantName) + "\r\n" +
+                            string.Format("Result.MerchantKanaName:{0}", userAuth.Result.MerchantKanaName) + "\r\n" +
+                            string.Format("Result.Prefectures:{0}", userAuth.Result.Prefectures) + "\r\n" +
+                            string.Format("Result.City:{0}", userAuth.Result.City) + "\r\n" +
+                            string.Format("Result.Street:{0}", userAuth.Result.Street) + "\r\n" +
+                            string.Format("Result.Address:{0}", userAuth.Result.Address) + "\r\n" +
+                            string.Format("Result.ContactPhoneNum:{0}", userAuth.Result.ContactPhoneNum) + "\r\n" +
+                            string.Format("Result.Email:{0}", userAuth.Result.Email) + "\r\n" +
+                            string.Format("Result.ContactHomeUrl:{0}", userAuth.Result.ContactHomeUrl) + "\r\n" +
+                            string.Format("Result.QrProvisionMethod:{0}", userAuth.Result.QrProvisionMethod) + "\r\n" +
+                            string.Format("Result.MerchantId:{0}", userAuth.Result.MerchantId) + "\r\n" +
+                            string.Format("Result.PwChangedFlag:{0}", userAuth.Result.PwChangedFlag) + "\r\n" +
+                            string.Format("Result.PayTypeList:{0}", userAuth.Result.PayTypeList) + "\r\n" +
+                            string.Format("BalanceAmount:{0}", userAuth.BalanceAmount.ToString());
+
+                        Console.WriteLine(authres, "帰ってきたjsonパラメタ");
+                        rtn = true;
+
+                    }
+                }
+            }
+            catch(Exception e)
+            {
+                Console.WriteLine("ユーザー認証(POST METHOD)でException発生:{0}", e.Message);
+            }
+
+            return rtn;
+        }
         /// <summary>
         /// PUT METHOD
         /// </summary>
@@ -381,7 +470,7 @@ namespace QBCodePay
                     // TimeOut
                     client.Timeout = TimeSpan.FromMilliseconds(pRefundTimeOut);
                 }
-
+                // HttpHeaderの生成・設定
                 AddHttpHeader2(ref client);
                 var res = await client.PutAsync(s, content);
 
@@ -561,12 +650,13 @@ namespace QBCodePay
             Console.WriteLine(ret);
             return ret;
         }
+        #region "送信用JSONデータ生成"
         /// <summary>
         /// QRコード支払(CPM)API[PUT METHOD]用 jsonデータ生成
         /// </summary>
         /// <param name="jdata">送信jsonデータ</param>
         /// <returns></returns>
-        private bool PutCPM(ref string jdata)
+        private bool PutCPMJson(ref string jdata)
         {
             bool ret = true;
             try
@@ -593,6 +683,36 @@ namespace QBCodePay
             }
             return ret;
         }
+        /// <summary>
+        /// ユーザー認証API(PUT)用JSONデータ生成
+        /// </summary>
+        /// <param name="jdata">JSONデータ</param>
+        /// <returns>true:成功、false:失敗</returns>
+        private bool PostAuthJson(ref string jdata)
+        {
+            bool rtn = false;
+
+            try
+            {
+                var auth = new MakeJsons.UserAuth();
+                auth.LoginId = "SHINAGAWA_HONTEN_001";
+                auth.UserPassword = "abCdeFgxYZ001";
+                auth.OsName = "KONAMI SPORTS CASHLESS SYS";
+                auth.OsVersion = "1.0.0.0.1";
+                auth.SerialNo = "A-001-002-003";
+
+                jdata = JsonConvert.SerializeObject(auth);
+                rtn = true;
+            }
+            catch(Exception e)
+            {
+                Console.WriteLine("POST METHOD JSONデータ作成に失敗:{0}", e.Message);
+            }
+
+            return rtn;
+        }
+        #endregion
+
         /// <summary>
         /// GET METHOD PAULING
         /// 支払確認API実行
