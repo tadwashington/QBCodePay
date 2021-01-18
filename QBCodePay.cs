@@ -70,7 +70,7 @@ namespace QBCodePay
         /// <summary>
         /// ユーザー認証APIレスポンスJSONクラスインスタンス
         /// </summary>
-        MakeJsons.UserAuthR userAuth;
+        MakeJsons.UserAuthR userAuthR;
 
         #endregion
         public QBCodePay()
@@ -124,6 +124,21 @@ namespace QBCodePay
             }
             return rtn;
         }
+        #region "Form Events"
+        /// <summary>
+        /// POSTボタンクリック
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void btnPost_Click(object sender, EventArgs e)
+        {
+            pUrl = this.txtEndPint.Text;
+            // POST METHOD実行
+            Post_Method();
+            this.txtEndPint.SelectAll();
+            this.txtEndPint.Focus();
+
+        }
         /// <summary>
         /// GETボタンクリック
         /// </summary>
@@ -137,6 +152,23 @@ namespace QBCodePay
             this.txtEndPint.SelectAll();
             this.txtEndPint.Focus();
         }
+        /// <summary>
+        /// PUTボタンクリック
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void btnPuts_Click(object sender, EventArgs e)
+        {
+            pUrl = this.txtEndPint.Text;
+            // PUT METHOD実行
+            Put_Method();
+
+            this.txtEndPint.SelectAll();
+            this.txtEndPint.Focus();
+
+        }
+        #endregion
+        #region "Http Method"
         /// <summary>
         /// GET METHOD
         /// </summary>
@@ -179,21 +211,6 @@ namespace QBCodePay
 
         }
         /// <summary>
-        /// PUTボタンクリック
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void btnPuts_Click(object sender, EventArgs e)
-        {
-            pUrl = this.txtEndPint.Text;
-            // PUT METHOD実行
-            Put_Method();
-
-            this.txtEndPint.SelectAll();
-            this.txtEndPint.Focus();
-
-        }
-        /// <summary>
         /// PUT METHOD
         /// </summary>
         private async void Post_Method()
@@ -229,7 +246,7 @@ namespace QBCodePay
                 // Put Method Request送信(jdata:JSONフォーマット)
                 bool rtn = await PutApiFrmUrl(pUrl, jdata);
                 // メソッドリターンがfalseでAPI処理が正常の場合は支払確認処理をPAULING
-                if  ((!string.IsNullOrEmpty(cpm.ReturnCode)) && (!string.IsNullOrEmpty(cpm.Result.Result_code)))
+                if ((!string.IsNullOrEmpty(cpm.ReturnCode)) && (!string.IsNullOrEmpty(cpm.Result.Result_code)))
                 {
                     if ((rtn == false) && (cpm.ReturnCode == cReturnCode) && (cpm.Result.Result_code == cResult_Code_W))
                     {
@@ -239,7 +256,7 @@ namespace QBCodePay
                             if (await GetPauling() == true)
                             {
                                 // 処理正常でかつ支払完了ならPAULING終了
-                                if ((!string.IsNullOrEmpty(resp.ReturnCode)) && (!string.IsNullOrEmpty(resp.Result.Result_code)) && 
+                                if ((!string.IsNullOrEmpty(resp.ReturnCode)) && (!string.IsNullOrEmpty(resp.Result.Result_code)) &&
                                     (resp.ReturnCode == cReturnCode) && (resp.Result.Result_code == cResult_Code_S))
                                 {
                                     // 支払完了
@@ -266,8 +283,9 @@ namespace QBCodePay
             }
 
         }
+        #endregion
         /// <summary>
-        /// Get Method
+        /// Get Method 詳細
         /// </summary>
         /// <param name="s"></param>
         private async Task<bool> GetApiFrmUrl(string s,int refund = 0)
@@ -379,7 +397,7 @@ namespace QBCodePay
             return rtn;
         }
         /// <summary>
-        /// POST METHOD
+        /// POST METHOD 詳細
         /// </summary>
         /// <param name="s"></param>
         /// <param name="jdata"></param>
@@ -406,40 +424,41 @@ namespace QBCodePay
                     if (!string.IsNullOrEmpty(g))
                     {
                         // Response Jsonデシリアライズ
-                        userAuth = new MakeJsons.UserAuthR();
-                        JsonConvert.DeserializeObject<MakeJsons.UserAuthR>(g);
+                        userAuthR = new MakeJsons.UserAuthR();
+                        userAuthR=JsonConvert.DeserializeObject<MakeJsons.UserAuthR>(g);
                         // 確認のためアイアログ表示
                         string authres =
-                            string.Format("ReturnCode:{0}", userAuth.ReturnCode) + "\r\n" +
-                            string.Format("ReturnMessage:{0}", userAuth.ReturnMessage) + "\r\n" +
-                            string.Format("MsgSummaryCode:{0}", userAuth.MsgSummaryCode) + "\r\n" +
-                            string.Format("MsgSummary:{0}", userAuth.MsgSummary) + "\r\n" +
-                            string.Format("Result.CredentialKey:{0}", userAuth.Result.CredentialKey) + "\r\n" +
-                            string.Format("Result.PartnerFullName:{0}", userAuth.Result.PartnerFullName) + "\r\n" +
-                            string.Format("Result.Description:{0}", userAuth.Result.Description) + "\r\n" +
-                            string.Format("Result.AdminPassword:{0}", userAuth.Result.AdminPassword) + "\r\n" +
-                            string.Format("Result.AuthForRefund:{0}", userAuth.Result.AuthForRefund.ToString()) + "\r\n" +
-                            string.Format("Result.CashNumber:{0}", userAuth.Result.CashNumber) + "\r\n" +
-                            string.Format("Result.WarningWord:{0}", userAuth.Result.WarningWord) + "\r\n" +
-                            string.Format("Result.CheckSnFlag:{0}", userAuth.Result.CheckSnFlag) + "\r\n" +
-                            string.Format("Result.MerchantFullName:{0}", userAuth.Result.MerchantFullName) + "\r\n" +
-                            string.Format("Result.MerchantName:{0}", userAuth.Result.MerchantName) + "\r\n" +
-                            string.Format("Result.MerchantKanaName:{0}", userAuth.Result.MerchantKanaName) + "\r\n" +
-                            string.Format("Result.Prefectures:{0}", userAuth.Result.Prefectures) + "\r\n" +
-                            string.Format("Result.City:{0}", userAuth.Result.City) + "\r\n" +
-                            string.Format("Result.Street:{0}", userAuth.Result.Street) + "\r\n" +
-                            string.Format("Result.Address:{0}", userAuth.Result.Address) + "\r\n" +
-                            string.Format("Result.ContactPhoneNum:{0}", userAuth.Result.ContactPhoneNum) + "\r\n" +
-                            string.Format("Result.Email:{0}", userAuth.Result.Email) + "\r\n" +
-                            string.Format("Result.ContactHomeUrl:{0}", userAuth.Result.ContactHomeUrl) + "\r\n" +
-                            string.Format("Result.QrProvisionMethod:{0}", userAuth.Result.QrProvisionMethod) + "\r\n" +
-                            string.Format("Result.MerchantId:{0}", userAuth.Result.MerchantId) + "\r\n" +
-                            string.Format("Result.PwChangedFlag:{0}", userAuth.Result.PwChangedFlag.ToString()) + "\r\n" +
+                            string.Format("ReturnCode:{0}", userAuthR.ReturnCode) + "\r\n" +
+                            string.Format("ReturnMessage:{0}", userAuthR.ReturnMessage) + "\r\n" +
+                            string.Format("MsgSummaryCode:{0}", userAuthR.MsgSummaryCode) + "\r\n" +
+                            string.Format("MsgSummary:{0}", userAuthR.MsgSummary) + "\r\n" +
+                            string.Format("Result.CredentialKey:{0}", userAuthR.Result.CredentialKey) + "\r\n" +
+                            string.Format("Result.PartnerFullName:{0}", userAuthR.Result.PartnerFullName) + "\r\n" +
+                            string.Format("Result.Description:{0}", userAuthR.Result.Description) + "\r\n" +
+                            string.Format("Result.AdminPassword:{0}", userAuthR.Result.AdminPassword) + "\r\n" +
+                            string.Format("Result.AuthForRefund:{0}", userAuthR.Result.AuthForRefund.ToString()) + "\r\n" +
+                            string.Format("Result.CashNumber:{0}", userAuthR.Result.CashNumber) + "\r\n" +
+
+                            string.Format("Result.WarningWord:{0}", userAuthR.Result.WarningWord) + "\r\n" +
+                            string.Format("Result.CheckSnFlag:{0}", userAuthR.Result.CheckSnFlag.ToString()) + "\r\n" +
+                            string.Format("Result.MerchantFullName:{0}", userAuthR.Result.MerchantFullName) + "\r\n" +
+                            string.Format("Result.MerchantName:{0}", userAuthR.Result.MerchantName) + "\r\n" +
+                            string.Format("Result.MerchantKanaName:{0}", userAuthR.Result.MerchantKanaName) + "\r\n" +
+                            string.Format("Result.Prefectures:{0}", userAuthR.Result.Prefectures) + "\r\n" +
+                            string.Format("Result.City:{0}", userAuthR.Result.City) + "\r\n" +
+                            string.Format("Result.Street:{0}", userAuthR.Result.Street) + "\r\n" +
+                            string.Format("Result.Address:{0}", userAuthR.Result.Address) + "\r\n" +
+                            string.Format("Result.ContactPhoneNum:{0}", userAuthR.Result.ContactPhoneNum) + "\r\n" +
+                            string.Format("Result.Email:{0}", userAuthR.Result.Email) + "\r\n" +
+                            string.Format("Result.ContactHomeUrl:{0}", userAuthR.Result.ContactHomeUrl) + "\r\n" +
+                            string.Format("Result.QrProvisionMethod:{0}", userAuthR.Result.QrProvisionMethod) + "\r\n" +
+                            string.Format("Result.MerchantId:{0}", userAuthR.Result.MerchantId.ToString()) + "\r\n" +
+                            string.Format("Result.PwChangedFlag:{0}", userAuthR.Result.PwChangedFlag.ToString()) + "\r\n" +
                             string.Format("Result.PayTypeList:{0}", "下記に記載") + "\r\n" +
-                            string.Format("BalanceAmount:{0}", userAuth.BalanceAmount.ToString()) + 
+                            string.Format("BalanceAmount:{0}\r\n", userAuthR.BalanceAmount) + 
                             string.Format("=== PayTypeList === \r\n");
 
-                        foreach (MakeJsons.PayList list in userAuth.Result.PayTypeList)
+                        foreach (MakeJsons.PayList list in userAuthR.Result.PayTypeList)
                         {
                             authres +=
                                 string.Format("list.PayTypeId:{0} \r\n", list.PayTypeId.ToString()) +
@@ -464,7 +483,7 @@ namespace QBCodePay
             return rtn;
         }
         /// <summary>
-        /// PUT METHOD
+        /// PUT METHOD 詳細
         /// </summary>
         /// <param name="s">URL</param>
         /// <param name="jdata">JSON DATA</param>
@@ -746,6 +765,7 @@ namespace QBCodePay
             return await GetApiFrmUrl(pUrl,0);
             
         }
+
     }
 
 }

@@ -23,7 +23,7 @@ namespace QBCodePay
         /// <summary>
         /// ユーザー認証送信用JSON
         /// </summary>
-        [JsonObject("userAuth")]
+        [JsonObject("userAuthR")]
         public class UserAuth
         {
             [JsonProperty("loginId")]
@@ -120,7 +120,7 @@ namespace QBCodePay
             /// 端末識別番号チェック要否
             /// </summary>
             [JsonProperty("checkSnFlag")]
-            public string CheckSnFlag;
+            public int CheckSnFlag;
             /// <summary>
             /// 店舗名称
             /// </summary>
@@ -180,7 +180,7 @@ namespace QBCodePay
             /// 店舗ID
             /// </summary>
             [JsonProperty("merchantId")]
-            public string MerchantId;
+            public long MerchantId;
             /// <summary>
             /// ﾕｰｻﾞ初期PW 変更済みﾌﾗｸﾞ
             /// 1：パスワード変更済み 0：初期パスワード未変更
