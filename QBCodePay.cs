@@ -71,6 +71,18 @@ namespace QBCodePay
         /// ユーザー認証APIレスポンスJSONクラスインスタンス
         /// </summary>
         MakeJsons.UserAuthR userAuthR;
+        /// <summary>
+        /// 返金API(PUT METHOD)レスポンスJSONクラスインスタンス
+        /// </summary>
+        MakeJsons.ReFoundRes reFoundR;
+        /// <summary>
+        /// 結果コード
+        /// </summary>
+        string rReturnCode { get; set; }
+        /// <summary>
+        /// 処理結果コード
+        /// </summary>
+        string rResultCode { get; set; }
 
         #endregion
         public QBCodePay()
@@ -161,7 +173,7 @@ namespace QBCodePay
         {
             pUrl = this.txtEndPint.Text;
             // PUT METHOD実行
-            Put_Method();
+            Put_Method(this.cbxRefund.Checked ? 1 : 0);
 
             this.txtEndPint.SelectAll();
             this.txtEndPint.Focus();
@@ -231,7 +243,10 @@ namespace QBCodePay
         /// <summary>
         /// PUT METHOD 
         /// </summary>
-        private async void Put_Method()
+        /// <param name="mode">
+        /// API選択(0:支払,1:返金)
+        /// </param>
+        private async void Put_Method(int mode = 0)
         {
             // URL正当性チェック
             if (!ChkEndPoint(pUrl))
@@ -241,23 +256,23 @@ namespace QBCodePay
 
             string jdata = string.Empty;
             // QRコード支払(CPM)API[PUT METHOD]用 jsonデータ生成～httpRequest送信
-            if (PutCPMJson(ref jdata))
+            if (PutCPMJson(ref jdata,mode))
             {
                 // Put Method Request送信(jdata:JSONフォーマット)
-                bool rtn = await PutApiFrmUrl(pUrl, jdata);
+                bool rtn = await PutApiFrmUrl(pUrl, jdata, mode);
                 // メソッドリターンがfalseでAPI処理が正常の場合は支払確認処理をPAULING
-                if ((!string.IsNullOrEmpty(cpm.ReturnCode)) && (!string.IsNullOrEmpty(cpm.Result.Result_code)))
+                if ((!string.IsNullOrEmpty(rReturnCode)) && (!string.IsNullOrEmpty(rResultCode)))
                 {
-                    if ((rtn == false) && (cpm.ReturnCode == cReturnCode) && (cpm.Result.Result_code == cResult_Code_W))
+                    if ((rtn == false) && (rReturnCode == cReturnCode) && (rResultCode == cResult_Code_W))
                     {
                         while (true)
                         {
                             // GET METHOD PAULING
-                            if (await GetPauling() == true)
+                            if (await GetPauling(mode) == true)
                             {
                                 // 処理正常でかつ支払完了ならPAULING終了
-                                if ((!string.IsNullOrEmpty(resp.ReturnCode)) && (!string.IsNullOrEmpty(resp.Result.Result_code)) &&
-                                    (resp.ReturnCode == cReturnCode) && (resp.Result.Result_code == cResult_Code_S))
+                                if ((!string.IsNullOrEmpty(rReturnCode)) && (!string.IsNullOrEmpty(rResultCode)) &&
+                                    (rReturnCode == cReturnCode) && (rResultCode == cResult_Code_S))
                                 {
                                     // 支払完了
                                     break;
@@ -288,7 +303,7 @@ namespace QBCodePay
         /// Get Method 詳細
         /// </summary>
         /// <param name="s"></param>
-        private async Task<bool> GetApiFrmUrl(string s,int refund = 0)
+        private async Task<bool> GetApiFrmUrl(string s,int mode = 0)
         {
             bool rtn = false;
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
@@ -306,7 +321,7 @@ namespace QBCodePay
                 }
                 // 支払伝票番号(半角数字固定20桁)
                 ulong n;
-                if (refund == 0)
+                if (mode == 0)
                 {
                     // 支払伝票番号をセット
                     n = 11234567890123456789;
@@ -316,7 +331,7 @@ namespace QBCodePay
                 // HttpHeader編集
                 var client = new HttpClient();
                 // QRコード支払と返金処理のパラメタ設定
-                if (refund == 0)
+                if (mode == 0)
                 {
                     // タイムアウト設定
                     client.Timeout = TimeSpan.FromMilliseconds(pCPMTimeOut);
@@ -336,37 +351,50 @@ namespace QBCodePay
                     var g = await res.Content.ReadAsStringAsync();
                     if (!string.IsNullOrEmpty(g))
                     {
-                        resp = new MakeJsons.CpmCheck();
-                        resp = JsonConvert.DeserializeObject<MakeJsons.CpmCheck>(g);
-                        // 確認のためアイアログ表示
-                        string rs =
-                            string.Format("ReturnCode:{0} \r\n", resp.ReturnCode) + 
-                            string.Format("ReturnMessage:{0}\r\n", resp.ReturnMessage) +
-                            string.Format("MsgSummaryCode:{0}\r\n", resp.MsgSummaryCode) +
-                            string.Format("MsgSummary:{0}\r\n", resp.MsgSummary) +
-                            string.Format("Result.partner_refund_id:{0}\r\n", resp.Result.partner_refund_id) +
-                            string.Format("Result.Currency:{0}\r\n", resp.Result.Currency) +
-                            string.Format("Result.Order_id:{0}\r\n", resp.Result.Order_id) +
-                            string.Format("Result.Return_code:{0}\r\n", resp.Result.Return_code) +
-                            string.Format("Result.Result_code:{0}\r\n", resp.Result.Result_code) +
-                            string.Format("Result.Real_fee:{0}\r\n", resp.Result.Real_fee) +
-                            string.Format("Result.Channel:{0}\r\n", resp.Result.Channel) +
-                            string.Format("Result.Create_time:{0}\r\n", resp.Result.Create_time) +
-                            string.Format("Result.Total_fee:{0}\r\n", resp.Result.Total_fee) +
-                            string.Format("Result.Pay_time:{0}\r\n", resp.Result.Pay_time) +
-                            string.Format("Result.Refund_fee:{0}\r\n", resp.Result.Refund_fee) +
-                            string.Format("Result.Order_body:{0}\r\n", resp.Result.Order_body) +
-                            string.Format("Result.Status:{0}\r\n", resp.Result.Status) +
-                            string.Format("Result.PartialRefundFlag:{0}\r\n", resp.Result.PartialRefundFlag) +
-                            string.Format("BalanceAmount:{0}\r\n", resp.BalanceAmount)
-                            ;
-                        //MessageBox.Show(rs, "帰ってきたパラメタ");
-                        Console.WriteLine(rs);
+                        if (mode == 0)
+                        {
+                            // 支払確認API
+                            resp = new MakeJsons.CpmCheck();
+                            resp = JsonConvert.DeserializeObject<MakeJsons.CpmCheck>(g);
+                            // 結果コード移入
+                            rReturnCode = resp.ReturnCode;
+                            // 処理結果コード移入
+                            rResultCode = resp.Result.Result_code;
+                            // 確認のためアイアログ表示
+                            string rs =
+                                string.Format("ReturnCode:{0} \r\n", resp.ReturnCode) +
+                                string.Format("ReturnMessage:{0}\r\n", resp.ReturnMessage) +
+                                string.Format("MsgSummaryCode:{0}\r\n", resp.MsgSummaryCode) +
+                                string.Format("MsgSummary:{0}\r\n", resp.MsgSummary) +
+                                string.Format("Result.partner_refund_id:{0}\r\n", resp.Result.partner_refund_id) +
+                                string.Format("Result.Currency:{0}\r\n", resp.Result.Currency) +
+                                string.Format("Result.Order_id:{0}\r\n", resp.Result.Order_id) +
+                                string.Format("Result.Return_code:{0}\r\n", resp.Result.Return_code) +
+                                string.Format("Result.Result_code:{0}\r\n", resp.Result.Result_code) +
+                                string.Format("Result.Real_fee:{0}\r\n", resp.Result.Real_fee) +
+                                string.Format("Result.Channel:{0}\r\n", resp.Result.Channel) +
+                                string.Format("Result.Create_time:{0}\r\n", resp.Result.Create_time) +
+                                string.Format("Result.Total_fee:{0}\r\n", resp.Result.Total_fee) +
+                                string.Format("Result.Pay_time:{0}\r\n", resp.Result.Pay_time) +
+                                string.Format("Result.Refund_fee:{0}\r\n", resp.Result.Refund_fee) +
+                                string.Format("Result.Order_body:{0}\r\n", resp.Result.Order_body) +
+                                string.Format("Result.Status:{0}\r\n", resp.Result.Status) +
+                                string.Format("Result.PartialRefundFlag:{0}\r\n", resp.Result.PartialRefundFlag) +
+                                string.Format("BalanceAmount:{0}\r\n", resp.BalanceAmount)
+                                ;
+                            //MessageBox.Show(rs, "帰ってきたパラメタ");
+                            Console.WriteLine(rs);
+                        }
+                        else if (mode == 1)
+                        {
+                            // 返金確認API
+
+                        }
                         // API正常
-                        if (resp.ReturnCode == cReturnCode)
+                        if (rReturnCode == cReturnCode)
                         {
                             // 支払完了
-                            if(resp.Result.Result_code == cResult_Code_S)
+                            if(rResultCode == cResult_Code_S)
                             {
                                 rtn = true;
                                 MessageBox.Show("支払確認が完了しました。", "支払確認");
@@ -487,19 +515,24 @@ namespace QBCodePay
         /// </summary>
         /// <param name="s">URL</param>
         /// <param name="jdata">JSON DATA</param>
-        private async Task<bool> PutApiFrmUrl(string s,string jdata = "",int refund = 0)
+        /// <param name="mode">
+        /// 0:支払,1:返金
+        /// </param>
+        private async Task<bool> PutApiFrmUrl(string s,string jdata = "",int mode = 0)
         {
             bool rtn = false;
 
-            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             try
             {
+                // TLS1.2指定
+                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+
                 // JSONデータ添付
                 HttpContent content = new StringContent(jdata,Encoding.UTF8,"application/json");
                 // HttpHeader編集
                 var client = new HttpClient();
                 // QRコード支払と返金処理の設定を行う
-                if (refund == 0)
+                if (mode == 0)
                 {
                     // TimeOut
                     client.Timeout = TimeSpan.FromMilliseconds(pCPMTimeOut);
@@ -519,30 +552,73 @@ namespace QBCodePay
                     var g = await res.Content.ReadAsStringAsync();
                     if (!string.IsNullOrEmpty(g))
                     {
-                        cpm = new MakeJsons.CpmRes();
-                        cpm = JsonConvert.DeserializeObject<MakeJsons.CpmRes>(g);
-                        // 確認のためアイアログ表示
-                        string cpmres =
-                            string.Format("ReturnCode:{0}", cpm.ReturnCode) + "\r\n" +
-                            string.Format("ReturnMessage:{0}", cpm.ReturnMessage) + "\r\n" +
-                            string.Format("MsgSummaryCode:{0}", cpm.MsgSummaryCode) + "\r\n" +
-                            string.Format("MsgSummary:{0}", cpm.MsgSummary) + "\r\n" +
-                            string.Format("Result.Partner_order_id:{0}", cpm.Result.Partner_order_id) + "\r\n" +
-                            string.Format("Result.Currency:{0}", cpm.Result.Currency) + "\r\n" +
-                            string.Format("Result.Order_id:{0}", cpm.Result.Order_id) + "\r\n" +
-                            string.Format("Result.Return_code:{0}", cpm.Result.Return_code) + "\r\n" +
-                            string.Format("Result.Result_code:{0}", cpm.Result.Result_code) + "\r\n" +
-                            string.Format("Result.Create_time:{0}", cpm.Result.Create_time) + "\r\n" +
-                            string.Format("Result.Total_fee:{0}", cpm.Result.Total_fee.ToString()) + "\r\n" +
-                            string.Format("Result.Real_fee:{0}", cpm.Result.Real_fee.ToString()) + "\r\n" +
-                            string.Format("Result.Channel:{0}", cpm.Result.Channel) + "\r\n" +
-                            string.Format("Result.Pay_time:{0}", cpm.Result.Pay_time) + "\r\n" +
-                            string.Format("Result.Order_body:{0}", cpm.Result.Order_body) + "\r\n" +
-                            string.Format("BalanceAmount:{0}", cpm.BalanceAmount.ToString());
+                        if (mode == 0)
+                        {
+                            //   支払API使用時
+                            cpm = new MakeJsons.CpmRes();
+                            cpm = JsonConvert.DeserializeObject<MakeJsons.CpmRes>(g);
+                            // 結果コード移入
+                            rReturnCode = cpm.ReturnCode;
+                            // 処理結果コード移入
+                            rResultCode = cpm.Result.Result_code;
+                            // 確認のためアイアログ表示
+                            string cpmres =
+                                string.Format("ReturnCode:{0}", cpm.ReturnCode) + "\r\n" +
+                                string.Format("ReturnMessage:{0}", cpm.ReturnMessage) + "\r\n" +
+                                string.Format("MsgSummaryCode:{0}", cpm.MsgSummaryCode) + "\r\n" +
+                                string.Format("MsgSummary:{0}", cpm.MsgSummary) + "\r\n" +
+                                string.Format("Result.Partner_order_id:{0}", cpm.Result.Partner_order_id) + "\r\n" +
+                                string.Format("Result.Currency:{0}", cpm.Result.Currency) + "\r\n" +
+                                string.Format("Result.Order_id:{0}", cpm.Result.Order_id) + "\r\n" +
+                                string.Format("Result.Return_code:{0}", cpm.Result.Return_code) + "\r\n" +
+                                string.Format("Result.Result_code:{0}", cpm.Result.Result_code) + "\r\n" +
+                                string.Format("Result.Create_time:{0}", cpm.Result.Create_time) + "\r\n" +
+                                string.Format("Result.Total_fee:{0}", cpm.Result.Total_fee.ToString()) + "\r\n" +
+                                string.Format("Result.Real_fee:{0}", cpm.Result.Real_fee.ToString()) + "\r\n" +
+                                string.Format("Result.Channel:{0}", cpm.Result.Channel) + "\r\n" +
+                                string.Format("Result.Pay_time:{0}", cpm.Result.Pay_time) + "\r\n" +
+                                string.Format("Result.Order_body:{0}", cpm.Result.Order_body) + "\r\n" +
+                                string.Format("BalanceAmount:{0}", cpm.BalanceAmount.ToString())
+                                ;
 
-                        Console.WriteLine(cpmres, "帰ってきたjsonパラメタ");
+                            Console.WriteLine(cpmres, "帰ってきたjsonパラメタ");
+
+                        }
+                        else if (mode == 1)
+                        {
+                            //   返金API使用時
+                            reFoundR = new MakeJsons.ReFoundRes();
+                            reFoundR = JsonConvert.DeserializeObject<MakeJsons.ReFoundRes>(g);
+                            // 結果コード移入
+                            rReturnCode = reFoundR.ReturnCode;
+                            // 処理結果コード移入
+                            rResultCode = reFoundR.Result.Result_code;
+                            // 確認のためアイアログ表示
+                            string cpmres =
+                                string.Format("ReturnCode:{0}", reFoundR.ReturnCode) + "\r\n" +
+                                string.Format("ReturnMessage:{0}", reFoundR.ReturnMessage) + "\r\n" +
+                                string.Format("MsgSummaryCode:{0}", reFoundR.MsgSummaryCode) + "\r\n" +
+                                string.Format("MsgSummary:{0}", reFoundR.MsgSummary) + "\r\n" +
+                                string.Format("Result.Partner_refund_id:{0}", reFoundR.Result.Partner_refund_id) + "\r\n" +
+                                string.Format("Result.Refund_id:{0}", reFoundR.Result.Refund_id) + "\r\n" +
+                                string.Format("Result.Currency:{0}", reFoundR.Result.Currency) + "\r\n" +
+                                string.Format("Result.Return_code:{0}", reFoundR.Result.Return_code) + "\r\n" +
+                                string.Format("Result.Result_code:{0}", reFoundR.Result.Result_code) + "\r\n" +
+                                string.Format("Result.Partner_order_id:{0}", reFoundR.Result.Partner_order_id) + "\r\n" +
+                                string.Format("Result.Total_fee:{0}", reFoundR.Result.Amount.ToString()) + "\r\n" +
+                                string.Format("Result.Channel:{0}", reFoundR.Result.Channel) + "\r\n" +
+                                string.Format("Result.Order_id:{0}", reFoundR.Result.Order_id) + "\r\n" +
+                                string.Format("Result.Create_time:{0}", reFoundR.Result.Create_time) + "\r\n" +
+                                string.Format("Result.Pay_time:{0}", reFoundR.Result.Pay_time) + "\r\n" +
+                                string.Format("Result.Total_fee:{0}", reFoundR.Result.Total_fee.ToString()) + "\r\n" +
+                                string.Format("Result.Real_fee:{0}", reFoundR.Result.Real_fee.ToString())
+                                ;
+
+                            Console.WriteLine(cpmres, "帰ってきたjsonパラメタ");
+
+                        }
                         // 処理正常でかつ支払完了時のみ支払確認処理をさせない
-                        if ((cpm.ReturnCode == cReturnCode) && (cpm.Result.Result_code == cResult_Code_S))
+                        if ((rReturnCode == cReturnCode) && (rResultCode == cResult_Code_S))
                         {
                             rtn = true;
                             MessageBox.Show("支払が完了しました。", "QRコード支払");
@@ -695,26 +771,41 @@ namespace QBCodePay
         /// </summary>
         /// <param name="jdata">送信jsonデータ</param>
         /// <returns></returns>
-        private bool PutCPMJson(ref string jdata)
+        private bool PutCPMJson(ref string jdata,int mode = 0)
         {
             bool ret = true;
             try
             {
-                // CPMリクエスト JSON定義
-                var req = new MakeJsons.CpmReq();
-                // Requestパラメタ設定
-                req.Order_id = "11234567890123456789";
-                req.SerialNo = "KONAMISPORTS CLUB HONTEN-4501001";
-                req.Description = "テストの取引備考でざます";
-                req.Price = 500;
-                req.Auth_code = "0001002003004005006007008009";
-                req.Currency = "JPY";
-                req.Operator = "abcdefg001";
-                // JSON シリアライズ(JSONフォーマットテキスト)
-                var JsonData = JsonConvert.SerializeObject(req);
-                jdata = JsonData;
+                if (mode == 0)
+                {
+                    // CPMリクエスト JSON定義
+                    var req = new MakeJsons.CpmReq();
+                    // Requestパラメタ設定
+                    req.Order_id = "11234567890123456789";
+                    req.SerialNo = "KONAMISPORTS CLUB HONTEN-4501001";
+                    req.Description = "テストの取引備考でざます";
+                    req.Price = 500;
+                    req.Auth_code = "0001002003004005006007008009";
+                    req.Currency = "JPY";
+                    req.Operator = "abcdefg001";
+                    // JSON シリアライズ(JSONフォーマットテキスト)
+                    var JsonData = JsonConvert.SerializeObject(req);
+                    jdata = JsonData;
 
-                Console.WriteLine("CPM PUT JSON:{0}", JsonData);
+                    Console.WriteLine("CPM PUT JSON:{0}", JsonData);
+                }
+                else if(mode == 1)
+                {
+                    // Refund(返金リクエスト)JSON定義クラス
+                    var req = new MakeJsons.ReFoundReq();
+                    // Requestパラメタ設定
+                    req.Refund_id = "11234567892123456789";
+                    req.Order_id = "98765432129876543211";
+                    req.SerialNo = "SHINAGAWA HONTEN 4501001";
+                    req.Fee = 12345678;
+                    var JsonData = JsonConvert.SerializeObject(req);
+                    jdata = JsonData;
+                }
             }
             catch
             {
@@ -757,12 +848,12 @@ namespace QBCodePay
         /// 支払確認API実行
         /// </summary>
         /// <returns></returns>
-        private async Task<bool> GetPauling()
+        private async Task<bool> GetPauling(int mode=0)
         {
             // PAULING 間隔待機
             await Task.Delay(pPollTime);
             // 支払確認API実行
-            return await GetApiFrmUrl(pUrl,0);
+            return await GetApiFrmUrl(pUrl,mode);
             
         }
 

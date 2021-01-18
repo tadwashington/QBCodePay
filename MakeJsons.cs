@@ -860,6 +860,12 @@ namespace QBCodePay
             [JsonProperty("msgSummaryCode")]
             public string MsgSummaryCode;
             /// <summary>
+            /// 集約結果メッセージ
+            /// 全半角文字(可変200byte)
+            /// </summary>
+            [JsonProperty("msgSummary")]
+            public string MsgSummary;
+            /// <summary>
             /// 結果詳細(第2階層へ)
             /// </summary>
             [JsonProperty("result")]

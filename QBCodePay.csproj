@@ -70,6 +70,7 @@
     <EmbeddedResource Include="QBCodePay.resx">
       <DependentUpon>QBCodePay.cs</DependentUpon>
     </EmbeddedResource>
+    <None Include="Config.json" />
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>

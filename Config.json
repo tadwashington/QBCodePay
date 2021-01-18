@@ -1,0 +1,14 @@
+{
+  "urLs": {
+    "prodHostUrl": "https:// pos gw.gcp.gmopg.jp",
+    "practHostUrl": "http://dev pos gw.gcp.gmopg.jp:88/",
+    "verifHostUrl": "https://stg pos gw.gcp.gmopg.jp/",
+    "postAuthUrl": "/gateway/api/v1/login",
+    "putOrderUrl": "/gateway/api/v1/qr/orders",
+    "getCheckUrl": "/gateway/api/v1/qr/checkorder",
+    "putRefndUrl": "/gateway/api/v1/qr/refunds",
+    "getRefChkUrl": "/gateway/api/v1/qr/checkrefunds",
+    "getTrdInfStrUrl": "/gateway/api/v1/qr/orders",
+    "postTrdInfCrpUrl": "/portal/queryapi/v1/qr/ordersforpartner"
+  }
+}
