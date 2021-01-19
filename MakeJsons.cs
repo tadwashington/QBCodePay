@@ -970,7 +970,7 @@ namespace QBCodePay
             /// 半角数字(10桁-可変)
             /// </summary>
             [JsonProperty("balanceAmount")]
-            public int BalanceAmount;
+            public string BalanceAmount;
         }
         /// <summary>
         /// 返金API 結果詳細(第2階層)

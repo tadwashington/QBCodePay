@@ -12,6 +12,7 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Net;
 using System.Net.Http;
+using System.Web;
 using System.Security.Cryptography;
 
 // Json用参照ライブラリ
@@ -45,7 +46,22 @@ namespace QBCodePay
         /// <summary>
         /// API URL
         /// </summary>
-        public string pUrl { get; set; }
+        public string pUrl { 
+            get {
+                /*
+                 * URLの末尾に「/」がある場合は削除 
+                 * 先頭に「/」付きのAPI URIが後で追記されるため
+                 */
+                string u = sUrl;
+                if ( (!string.IsNullOrEmpty(u)) && (u.Substring(sUrl.Length -1) == "/"))
+                {
+                    u = u.Substring(0,sUrl.Length - 1);
+                }
+                return u;
+            }
+            set { sUrl = value; }
+        }
+        string sUrl = string.Empty;
         /// <summary>
         /// 本番環境URL
         /// </summary>
@@ -79,7 +95,7 @@ namespace QBCodePay
         /// </summary>
         public string pCPMUrl { get; set; }
         /// <summary>
-        /// 支払API(GET)URL
+        /// 支払確認API(GET)URL
         /// </summary>
         public string pCPMUrlGet { get; set; }
         /// <summary>
@@ -87,7 +103,7 @@ namespace QBCodePay
         /// </summary>
         public string pRefundUrl { get; set; }
         /// <summary>
-        /// 返金API(GET)URL
+        /// 返金確認API(GET)URL
         /// </summary>
         public string pRefundUrlGet { get; set; }
         /// <summary>
@@ -252,7 +268,7 @@ namespace QBCodePay
         {
             pUrl = this.txtEndPint.Text;
             // GET METHOD実行
-            Get_Method();
+            Get_Method(this.cbxRefund.Checked ? 1 : 0);
             this.txtEndPint.SelectAll();
             this.txtEndPint.Focus();
         }
@@ -276,13 +292,13 @@ namespace QBCodePay
         /// <summary>
         /// GET METHOD
         /// </summary>
-        private async void Get_Method()
+        private async void Get_Method(int mode = 0)
         {
             if (!ChkEndPoint(pUrl))
             {
                 return;
             }
-            bool rtn = await GetApiFrmUrl(pUrl);
+            bool rtn = await GetApiFrmUrl(pUrl,mode);
             /* 
              * APIレスポンスのReturn_Codeが"MP10000(処理正常)"でかつメソッドリターンがfalseの場合は 
              * 支払待ちと判定し支払確認(GET METHOD)のPaulingを行う
@@ -402,34 +418,47 @@ namespace QBCodePay
             try
             {
                 // クエリパラメタ追記
+                var prms = new Dictionary<string, string>();
                 /*
                  * GETデータ（クエリパラメータ）
                  * storeOrderId(支払伝票番号)固定20桁を設定する
                  */
-                // urlの末尾に「/」がない場合は追記する
-                if (s.Substring(s.Length - 1) != "/")
-                {
-                    s += "/";
-                }
-                // 支払伝票番号(半角数字固定20桁)
-                ulong n;
-                if (mode == 0)
-                {
-                    // 支払伝票番号をセット
-                    n = 11234567890123456789;
-                    // クエリパラメタをセット
-                    s += "?storeOrderId=" + n.ToString();
-                }
+                // 支払(返金)伝票番号(半角数字固定20桁)
+                decimal n = 0;
+                // 対象支払伝票番号(半角数字固定20桁)
+                decimal nn =0;
                 // HttpHeader編集
                 var client = new HttpClient();
                 // QRコード支払と返金処理のパラメタ設定
                 if (mode == 0)
                 {
+                    // 支払伝票番号をセット
+                    n = 11234567890123456789;
+                    // 支払確認API URLとクエリパラメタをセット
+                    s += pCPMUrlGet;
+
+                    prms = new Dictionary<string, string>()
+                    {
+                        {"storeOrderId", n.ToString() },
+                    };
+                    s += "?" + await new FormUrlEncodedContent(prms).ReadAsStringAsync();
                     // タイムアウト設定
                     client.Timeout = TimeSpan.FromMilliseconds(pCPMTimeOut);
                 }
                 else
                 {
+                    // 返金伝票番号をセット
+                    n = 11234567890123456789;
+                    nn = 15765432109876543210;
+                    // 返金確認API URLとクエリパラメタをセット
+                    s += pRefundUrlGet;
+
+                    prms = new Dictionary<string, string>()
+                    {
+                        {"storeRefundId", n.ToString() },
+                        {"storeOrderId", nn.ToString() },
+                    };
+                    s += "?" + await new FormUrlEncodedContent(prms).ReadAsStringAsync();
                     // タイムアウト設定
                     client.Timeout = TimeSpan.FromMilliseconds(pRefundTimeOut);
                 }
@@ -521,7 +550,7 @@ namespace QBCodePay
         /// </summary>
         /// <param name="s">URL</param>
         /// <param name="jdata">JSON DATA</param>
-        /// <param name="mode">API選択フラグ</param>
+        /// <param name="mode">API選択フラグ(0:ユーザー認証,1:取引記録照会(企業単位))</param>
         /// <returns></returns>
         private async Task<bool> PostApiFrmUrl(string s,string jdata = "",int mode=0)
         {
@@ -529,6 +558,15 @@ namespace QBCodePay
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             try
             {
+                // API URL生成
+                if (mode == 0)
+                {
+                    s += pAuthUrl;
+                }
+                else if(mode == 1)
+                {
+                    s += pTradeCorp;
+                }
                 // JSONデータ添付
                 HttpContent content = new StringContent(jdata, Encoding.UTF8, "application/json");
                 // HttpHeader編集
@@ -629,11 +667,15 @@ namespace QBCodePay
                 {
                     // TimeOut
                     client.Timeout = TimeSpan.FromMilliseconds(pCPMTimeOut);
+                    // QRコード支払API URLを追記
+                    s += pCPMUrl;
                 }
                 else
                 {
                     // TimeOut
                     client.Timeout = TimeSpan.FromMilliseconds(pRefundTimeOut);
+                    // 返金API URLを追記
+                    s += pRefundUrl;
                 }
                 // HttpHeaderの生成・設定
                 AddHttpHeader2(ref client);
@@ -671,7 +713,7 @@ namespace QBCodePay
                                 string.Format("Result.Channel:{0}", cpm.Result.Channel) + "\r\n" +
                                 string.Format("Result.Pay_time:{0}", cpm.Result.Pay_time) + "\r\n" +
                                 string.Format("Result.Order_body:{0}", cpm.Result.Order_body) + "\r\n" +
-                                string.Format("BalanceAmount:{0}", cpm.BalanceAmount.ToString())
+                                string.Format("BalanceAmount:{0}", cpm.BalanceAmount)
                                 ;
 
                             Console.WriteLine(cpmres, "帰ってきたjsonパラメタ");
@@ -714,7 +756,15 @@ namespace QBCodePay
                         if ((rReturnCode == cReturnCode) && (rResultCode == cResult_Code_S))
                         {
                             rtn = true;
-                            MessageBox.Show("支払が完了しました。", "QRコード支払");
+                            if (mode == 0)
+                            {
+                                MessageBox.Show("支払が完了しました。", "QRコード支払");
+                            }
+                            else if (mode == 1)
+                            {
+                                MessageBox.Show("返金処理が完了しました。", "返金処理");
+
+                            }
                         }
 
                     }
@@ -744,6 +794,7 @@ namespace QBCodePay
             return rtn;
         }
 
+        #region "Http Header生成"
         // UNIXエポックを表すDateTimeオブジェクトを取得
         private static DateTime UNIX_EPOCH =
           new DateTime(1970, 1, 1, 0, 0, 0, 0);
@@ -858,6 +909,7 @@ namespace QBCodePay
             Console.WriteLine(ret);
             return ret;
         }
+        #endregion
         #region "送信用JSONデータ生成"
         /// <summary>
         /// QRコード支払(CPM)API[PUT METHOD]用 jsonデータ生成
