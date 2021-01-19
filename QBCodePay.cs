@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
+using System.IO;
 using System.Text.RegularExpressions;
 using System.Net;
 using System.Net.Http;
@@ -46,9 +47,21 @@ namespace QBCodePay
         /// </summary>
         public string pUrl { get; set; }
         /// <summary>
+        /// 本番環境URL
+        /// </summary>
+        public string pProdHostUrl { get; set; }
+        /// <summary>
+        /// 動作確認環境(スタブ環境)
+        /// </summary>
+        public string pStubHostUrl { get; set; }
+        /// <summary>
+        /// 検証環境
+        /// </summary>
+        public string pVerifHostUrl { get; set; }
+        /// <summary>
         /// GET METHOD Pauling間隔(ミリ秒)
         /// </summary>
-        public int pPollTime { get; set; }
+        public int pGetPollTime { get; set; }
         /// <summary>
         /// QRコード支払いタイムアウト(MAX30秒)
         /// </summary>
@@ -57,6 +70,38 @@ namespace QBCodePay
         /// 返金タイムアウト(MAX300秒)
         /// </summary>
         public int pRefundTimeOut { get; set; }
+        /// <summary>
+        /// ユーザー認証API URL
+        /// </summary>
+        public string pAuthUrl { get; set; }
+        /// <summary>
+        /// 支払API(PUT)URL
+        /// </summary>
+        public string pCPMUrl { get; set; }
+        /// <summary>
+        /// 支払API(GET)URL
+        /// </summary>
+        public string pCPMUrlGet { get; set; }
+        /// <summary>
+        /// 返金API(PUT)URL
+        /// </summary>
+        public string pRefundUrl { get; set; }
+        /// <summary>
+        /// 返金API(GET)URL
+        /// </summary>
+        public string pRefundUrlGet { get; set; }
+        /// <summary>
+        /// 取引記録照会(店舗単位-GET)API
+        /// </summary>
+        public string pTradeStore { get; set; }
+        /// <summary>
+        /// 取引記録照会(企業単位-PUT)API
+        /// </summary>
+        public string pTradeCorp { get; set; }
+        /// <summary>
+        /// アクセスポート
+        /// </summary>
+        public int pAccessPort { get; set; }
         #endregion
         #region "インスタンス群"
         /// <summary>
@@ -88,12 +133,59 @@ namespace QBCodePay
         public QBCodePay()
         {
             InitializeComponent();
-            // GET METHOD Pauling間隔を設定(2秒以上)
-            pPollTime = 2000;
-            // QRコード支払いTimeOut設定(30秒)
-            pCPMTimeOut = 30000;
-            // 返金TimeOut設定(300秒)
-            pRefundTimeOut = 300000;
+            // Config JSONファイルを読込(環境定義)
+            if (!ReadConfigJson())
+            {
+                // JSONファイル読込失敗はプログラム終了
+                Application.Exit();
+            };
+        }
+        private bool ReadConfigJson()
+        {
+            bool rtn = false;
+            try
+            {
+                var pt =  File.ReadAllText("./Config.json",Encoding.UTF8);
+                MakeJsons.Configure jsn = new MakeJsons.Configure();
+                jsn = JsonConvert.DeserializeObject<MakeJsons.Configure>(pt);
+                /*
+                 * 各環境変数に値を編入
+                 */
+                // GET METHOD Pauling間隔を設定(2秒以上)
+                pGetPollTime = jsn.pollingTimeout.GetPollTime;
+                // QRコード支払いTimeOut設定(30秒)
+                pCPMTimeOut = jsn.pollingTimeout.CpmTimeOut;
+                // 返金TimeOut設定(300秒)
+                pRefundTimeOut = jsn.pollingTimeout.RefundTimeOut;
+                // 本番環境URL
+                pProdHostUrl = jsn.urls.ProdHostUrl;
+                // 動作確認環境(スタブ環境)URL
+                pStubHostUrl = jsn.urls.StubHostUrl;
+                // 検証環境
+                pVerifHostUrl = jsn.urls.VerifHostUrl;
+                // ユーザー認証(POST) URL
+                pAuthUrl = jsn.urls.PostAuthUrl;
+                // QRコード支払(PUT) URL
+                pCPMUrl = jsn.urls.PutOrderUrl;
+                // 支払確認(GET) URL
+                pCPMUrlGet = jsn.urls.GetCheckUrl;
+                // 返金API(PUT)　URL
+                pRefundUrl = jsn.urls.PutRefndUrl;
+                // 返金確認API(GET)　URL
+                pRefundUrlGet = jsn.urls.GetRefChkUrl;
+                // 取引記録照会(店舗)API URL
+                pTradeStore = jsn.urls.GetTrdInfStrUrl;
+                // 取引記録照会(企業)API URL
+                pTradeCorp = jsn.urls.PostTrdInfCrpUrl;
+                // アクセスポート
+                pAccessPort = jsn.urls.AccessPort;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Config.jsonファイルの読込失敗:{0}",e.Message);
+                rtn = false;
+            }
+            return rtn;
         }
         /// <summary>
         /// EndPoint入力チェック
@@ -427,10 +519,11 @@ namespace QBCodePay
         /// <summary>
         /// POST METHOD 詳細
         /// </summary>
-        /// <param name="s"></param>
-        /// <param name="jdata"></param>
+        /// <param name="s">URL</param>
+        /// <param name="jdata">JSON DATA</param>
+        /// <param name="mode">API選択フラグ</param>
         /// <returns></returns>
-        private async Task<bool> PostApiFrmUrl(string s,string jdata = "")
+        private async Task<bool> PostApiFrmUrl(string s,string jdata = "",int mode=0)
         {
             bool rtn = false;
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
@@ -851,7 +944,7 @@ namespace QBCodePay
         private async Task<bool> GetPauling(int mode=0)
         {
             // PAULING 間隔待機
-            await Task.Delay(pPollTime);
+            await Task.Delay(pGetPollTime);
             // 支払確認API実行
             return await GetApiFrmUrl(pUrl,mode);
             

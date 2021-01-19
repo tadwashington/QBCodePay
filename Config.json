@@ -1,7 +1,7 @@
 {
   "urLs": {
     "prodHostUrl": "https:// pos gw.gcp.gmopg.jp",
-    "practHostUrl": "http://dev pos gw.gcp.gmopg.jp:88/",
+    "stubHostUrl": "http://dev pos gw.gcp.gmopg.jp:88/",
     "verifHostUrl": "https://stg pos gw.gcp.gmopg.jp/",
     "postAuthUrl": "/gateway/api/v1/login",
     "putOrderUrl": "/gateway/api/v1/qr/orders",
@@ -9,6 +9,12 @@
     "putRefndUrl": "/gateway/api/v1/qr/refunds",
     "getRefChkUrl": "/gateway/api/v1/qr/checkrefunds",
     "getTrdInfStrUrl": "/gateway/api/v1/qr/orders",
-    "postTrdInfCrpUrl": "/portal/queryapi/v1/qr/ordersforpartner"
+    "postTrdInfCrpUrl": "/portal/queryapi/v1/qr/ordersforpartner",
+    "accessPort": 3000
+  },
+  "pollingTimeout":{
+      "getPollTime": 2000,
+      "cpmTimeOut": 30000,
+      "refundTimeOut": 300000
   }
 }

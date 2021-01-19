@@ -18,6 +18,101 @@ namespace QBCodePay
     /// </summary>
     class MakeJsons
     {
+        #region "Config JSON定義"
+        [JsonObject("configure")]
+        public class Configure
+        {
+            [JsonProperty("urLs")]
+            public Urls urls;
+            [JsonProperty("pollingTimeout")]
+            public PollingTimeout pollingTimeout;
+        }
+        /// <summary>
+        /// HOST,API URL群
+        /// </summary>
+        [JsonObject("urLs")]
+        public class Urls
+        {
+            /// <summary>
+            /// 本番環境URL
+            /// </summary>
+            [JsonProperty("prodHostUrl")]
+            public string ProdHostUrl;
+            /// <summary>
+            /// 動作確認環境(スタブ環境)URL
+            /// </summary>
+            [JsonProperty("stubHostUrl")]
+            public string StubHostUrl;
+            /// <summary>
+            /// 検証環境URL
+            /// </summary>
+            [JsonProperty("verifHostUrl")]
+            public string VerifHostUrl;
+            /// <summary>
+            /// ユーザー認証API URL
+            /// </summary>
+            [JsonProperty("postAuthUrl")]
+            public string PostAuthUrl;
+            /// <summary>
+            /// QRコード支払API(PUT) URL
+            /// </summary>
+            [JsonProperty("putOrderUrl")]
+            public string PutOrderUrl;
+            /// <summary>
+            /// 支払確認API(GET) URL
+            /// </summary>
+            [JsonProperty("getCheckUrl")]
+            public string GetCheckUrl;
+            /// <summary>
+            /// 返金API(PUT) URL
+            /// </summary>
+            [JsonProperty("putRefndUrl")]
+            public string PutRefndUrl;
+            /// <summary>
+            /// 返金確認API(GET) URL
+            /// </summary>
+            [JsonProperty("getRefChkUrl")]
+            public string GetRefChkUrl;
+            /// <summary>
+            /// 取引照会(店舗単位)API(GET) URL
+            /// </summary>
+            [JsonProperty("getTrdInfStrUrl")]
+            public string GetTrdInfStrUrl;
+            /// <summary>
+            /// 取引照会(企業単位)API(POST) URL
+            /// </summary>
+            [JsonProperty("postTrdInfCrpUrl")]
+            public string PostTrdInfCrpUrl;
+            /// <summary>
+            /// アクセスポート
+            /// </summary>
+            [JsonProperty("accessPort")]
+            public int AccessPort;
+        }
+        /// <summary>
+        /// 各APIリクエストのポーリング間隔およびタイムアウト
+        /// </summary>
+        [JsonObject("pollingTimeout")]
+        public class PollingTimeout
+        {
+            /// <summary>
+            /// 各確認API(GET)のポーリング間隔(ミリ秒)
+            /// </summary>
+            [JsonProperty("getPollTime")]
+            public int GetPollTime;
+            /// <summary>
+            /// 支払API(PUT)のタイムアウト時間(ミリ秒)
+            /// </summary>
+            [JsonProperty("cpmTimeOut")]
+            public int CpmTimeOut;
+            /// <summary>
+            /// 返金API(PUT)のタイムアウト時間(ミリ秒)
+            /// </summary>
+            [JsonProperty("refundTimeOut")]
+            public int RefundTimeOut;
+        }
+
+        #endregion
         #region "ユーザー認証送信用JSONフォーマット定義"
 
         /// <summary>
