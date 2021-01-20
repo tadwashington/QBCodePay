@@ -30,16 +30,30 @@ namespace QBCodePay
         /// <summary>
         /// Result_Code:PAY_SUCCESS(支払成功)
         /// </summary>
-        private string cResult_Code_S = "PAY_SUCCESS";
+        private const string cResult_Code_S = "PAY_SUCCESS";
         /// <summary>
         /// Result_Code:PAYING(支払待ち)
         /// </summary>
-        private string cResult_Code_W = "PAYING";
+        private const string cResult_Code_P = "PAYING";
+        /// <summary>
+        /// Result_Code:SUCCESS(返金確認完了)
+        /// 返金確認時の正常ステータスは「SUCCESS」または「FINISHED」となる
+        /// </summary>
+        private const string cResult_Code_SS = "SUCCESS";
+        /// <summary>
+        /// Result_Code:SUCCESS(返金確認完了)
+        /// 返金確認時の正常ステータスは「SUCCESS」または「FINISHED」となる
+        /// </summary>
+        private const string cResult_Code_F = "FINISHED";
+        /// <summary>
+        /// Result_Code:SUCCESS(返金待ち)
+        /// </summary>
+        private const string cResult_Code_W = "WAITING";
         /// <summary>
         /// 結果コード(正常:MP10000)
         /// 以外は異常と判定する
         /// </summary>
-        private string cReturnCode = "MP10000";
+        private const string cReturnCode = "MP10000";
         #endregion
 
         #region "プロパティ群"
@@ -137,6 +151,10 @@ namespace QBCodePay
         /// </summary>
         MakeJsons.ReFoundRes reFoundR;
         /// <summary>
+        /// 返金結果確認API(GET METHOD)レスポンスJSONクラスインスタンス
+        /// </summary>
+        MakeJsons.ReFoundChk reFoundC;
+        /// <summary>
         /// 結果コード
         /// </summary>
         string rReturnCode { get; set; }
@@ -156,6 +174,10 @@ namespace QBCodePay
                 Application.Exit();
             };
         }
+        /// <summary>
+        /// Configファイル(json)読込
+        /// </summary>
+        /// <returns></returns>
         private bool ReadConfigJson()
         {
             bool rtn = false;
@@ -267,8 +289,9 @@ namespace QBCodePay
         private void btnGets_Click(object sender, EventArgs e)
         {
             pUrl = this.txtEndPint.Text;
+            var i = this.cbxRefund.Checked ? 1 : this.cbxTradeList.Checked ? 2 : 0;
             // GET METHOD実行
-            Get_Method(this.cbxRefund.Checked ? 1 : 0);
+            Get_Method(i);
             this.txtEndPint.SelectAll();
             this.txtEndPint.Focus();
         }
@@ -303,7 +326,7 @@ namespace QBCodePay
              * APIレスポンスのReturn_Codeが"MP10000(処理正常)"でかつメソッドリターンがfalseの場合は 
              * 支払待ちと判定し支払確認(GET METHOD)のPaulingを行う
              */
-            if ((resp.ReturnCode == cReturnCode) && (rtn = false))
+            if ((rReturnCode == cReturnCode) && (rtn = false))
             {
                 while (true)
                 {
@@ -311,7 +334,11 @@ namespace QBCodePay
                     if (await GetPauling() == true)
                     {
                         // 処理正常でかつ支払完了ならPAULING終了
-                        if ((resp.ReturnCode == cReturnCode) && (resp.Result.Result_code == cResult_Code_S))
+                        if ((rResultCode == cReturnCode) && 
+                            ((rResultCode == cResult_Code_S) || 
+                            (rResultCode == cResult_Code_SS) ||
+                            (rResultCode == cResult_Code_F))
+                            )
                         {
                             // 支払完了
                             break;
@@ -319,7 +346,7 @@ namespace QBCodePay
                     }
                     else
                     {
-                        if ((resp.ReturnCode != cReturnCode))
+                        if ((rReturnCode != cReturnCode))
                         {
                             // エラー処理へ
                             break;
@@ -333,18 +360,36 @@ namespace QBCodePay
         /// <summary>
         /// PUT METHOD
         /// </summary>
-        private async void Post_Method()
+        private async void Post_Method(int mode=0)
         {
-            // URL正当性チェック
-            if (!ChkEndPoint(pUrl))
+            bool rtn = false;
+            try
             {
-                return;
+                // URL正当性チェック
+                if (!ChkEndPoint(pUrl))
+                {
+                    return;
+                }
+                string jdata = string.Empty;
+                // ユーザー認証API[POST METHOD]用 jsonデータ生成～httpRequest送信
+                if (PostAuthJson(ref jdata))
+                {
+                    rtn = await PostApiFrmUrl(pUrl, jdata);
+                }
+                if (rtn == true)
+                {
+                    MessageBox.Show("POST METHOD正常終了", "POST METHOD 実行");
+                }
+                else
+                {
+                    throw new Exception();
+                }
             }
-            string jdata = string.Empty;
-            // ユーザー認証API[POST METHOD]用 jsonデータ生成～httpRequest送信
-            if (PostAuthJson(ref jdata))
+            catch(Exception e)
             {
-                await PostApiFrmUrl(pUrl, jdata);
+                Console.WriteLine("PUT METHOD実行時にエラー:{0}", e.Message);
+                MessageBox.Show(string.Format("POST METHOD異常終了:{0}",e.Message), "POST METHOD 実行");
+                rtn = false;
             }
 
         }
@@ -371,16 +416,19 @@ namespace QBCodePay
                 // メソッドリターンがfalseでAPI処理が正常の場合は支払確認処理をPAULING
                 if ((!string.IsNullOrEmpty(rReturnCode)) && (!string.IsNullOrEmpty(rResultCode)))
                 {
-                    if ((rtn == false) && (rReturnCode == cReturnCode) && (rResultCode == cResult_Code_W))
+                    if ((rtn == false) && (rReturnCode == cReturnCode) && 
+                        ((rResultCode == cResult_Code_P) || 
+                        (rResultCode == cResult_Code_W)))
                     {
                         while (true)
                         {
                             // GET METHOD PAULING
                             if (await GetPauling(mode) == true)
                             {
-                                // 処理正常でかつ支払完了ならPAULING終了
+                                // 処理正常でかつ支払完了または返金確認完了ならPAULING終了
                                 if ((!string.IsNullOrEmpty(rReturnCode)) && (!string.IsNullOrEmpty(rResultCode)) &&
-                                    (rReturnCode == cReturnCode) && (rResultCode == cResult_Code_S))
+                                    (rReturnCode == cReturnCode) && 
+                                    ((rResultCode == cResult_Code_S) || (rResultCode == cResult_Code_SS) || (rResultCode == cResult_Code_F)))
                                 {
                                     // 支払完了
                                     break;
@@ -509,16 +557,58 @@ namespace QBCodePay
                         else if (mode == 1)
                         {
                             // 返金確認API
+                            reFoundC = new MakeJsons.ReFoundChk();
+                            reFoundC = JsonConvert.DeserializeObject<MakeJsons.ReFoundChk>(g);
+                            // 結果コード移入
+                            rReturnCode = reFoundC.ReturnCode;
+                            // 処理結果コード移入
+                            rResultCode = reFoundC.Result.Result_code;
+                            string rs =
+                                string.Format("ReturnCode:{0}", reFoundC.ReturnCode) + "\r\n" +
+                                string.Format("ReturnMessage:{0}", reFoundC.ReturnMessage) + "\r\n" +
+                                string.Format("MsgSummaryCode:{0}", reFoundC.MsgSummaryCode) + "\r\n" +
+                                string.Format("MsgSummary:{0}", reFoundC.MsgSummary) + "\r\n" +
+                                string.Format("Result.Partner_refund_id:{0}", reFoundC.Result.Partner_refund_id) + "\r\n" +
+                                string.Format("Result.Refund_id:{0}", reFoundC.Result.Refund_id) + "\r\n" +
+                                string.Format("Result.Currency:{0}", reFoundC.Result.Currency) + "\r\n" +
+                                string.Format("Result.Return_code:{0}", reFoundC.Result.Return_code) + "\r\n" +
+                                string.Format("Result.Result_code:{0}", reFoundC.Result.Result_code) + "\r\n" +
+                                string.Format("Result.Partner_order_id:{0}", reFoundC.Result.Partner_order_id) + "\r\n" +
+                                string.Format("Result.Total_fee:{0}", reFoundC.Result.Amount.ToString()) + "\r\n" +
+                                string.Format("Result.Channel:{0}", reFoundC.Result.Channel) + "\r\n" +
+                                string.Format("Result.Order_id:{0}", reFoundC.Result.Order_id) + "\r\n" +
+                                string.Format("Result.Create_time:{0}", reFoundC.Result.Create_time) + "\r\n" +
+                                string.Format("Result.Pay_time:{0}", reFoundC.Result.Pay_time) + "\r\n" +
+                                string.Format("Result.Total_fee:{0}", reFoundC.Result.Total_fee.ToString()) + "\r\n" +
+                                string.Format("Result.Real_fee:{0}", reFoundC.Result.Real_fee.ToString())
+                                ;
+
+                            Console.WriteLine(rs, "帰ってきたjsonパラメタ");
+
 
                         }
                         // API正常
                         if (rReturnCode == cReturnCode)
                         {
-                            // 支払完了
-                            if(rResultCode == cResult_Code_S)
+                            // 支払または返金確認完了
+                            if((rResultCode == cResult_Code_S) || 
+                                (rResultCode == cResult_Code_SS) || 
+                                (rResultCode == cResult_Code_F))
                             {
                                 rtn = true;
-                                MessageBox.Show("支払確認が完了しました。", "支払確認");
+                                string dMsg = string.Empty;
+                                string dTtl = string.Empty;
+                                if (mode == 0)
+                                {
+                                    dMsg = "支払確認が完了しました。";
+                                    dTtl = "支払確認";
+                                }
+                                else if(mode == 1)
+                                {
+                                    dMsg = "返金結果確認が完了しました。";
+                                    dTtl = "返金結果確認";
+                                }
+                                MessageBox.Show(dMsg, dTtl);
                             }
                         }
                     }
@@ -582,53 +672,64 @@ namespace QBCodePay
                     var g = await res.Content.ReadAsStringAsync();
                     if (!string.IsNullOrEmpty(g))
                     {
-                        // Response Jsonデシリアライズ
-                        userAuthR = new MakeJsons.UserAuthR();
-                        userAuthR=JsonConvert.DeserializeObject<MakeJsons.UserAuthR>(g);
-                        // 確認のためアイアログ表示
-                        string authres =
-                            string.Format("ReturnCode:{0}", userAuthR.ReturnCode) + "\r\n" +
-                            string.Format("ReturnMessage:{0}", userAuthR.ReturnMessage) + "\r\n" +
-                            string.Format("MsgSummaryCode:{0}", userAuthR.MsgSummaryCode) + "\r\n" +
-                            string.Format("MsgSummary:{0}", userAuthR.MsgSummary) + "\r\n" +
-                            string.Format("Result.CredentialKey:{0}", userAuthR.Result.CredentialKey) + "\r\n" +
-                            string.Format("Result.PartnerFullName:{0}", userAuthR.Result.PartnerFullName) + "\r\n" +
-                            string.Format("Result.Description:{0}", userAuthR.Result.Description) + "\r\n" +
-                            string.Format("Result.AdminPassword:{0}", userAuthR.Result.AdminPassword) + "\r\n" +
-                            string.Format("Result.AuthForRefund:{0}", userAuthR.Result.AuthForRefund.ToString()) + "\r\n" +
-                            string.Format("Result.CashNumber:{0}", userAuthR.Result.CashNumber) + "\r\n" +
-
-                            string.Format("Result.WarningWord:{0}", userAuthR.Result.WarningWord) + "\r\n" +
-                            string.Format("Result.CheckSnFlag:{0}", userAuthR.Result.CheckSnFlag.ToString()) + "\r\n" +
-                            string.Format("Result.MerchantFullName:{0}", userAuthR.Result.MerchantFullName) + "\r\n" +
-                            string.Format("Result.MerchantName:{0}", userAuthR.Result.MerchantName) + "\r\n" +
-                            string.Format("Result.MerchantKanaName:{0}", userAuthR.Result.MerchantKanaName) + "\r\n" +
-                            string.Format("Result.Prefectures:{0}", userAuthR.Result.Prefectures) + "\r\n" +
-                            string.Format("Result.City:{0}", userAuthR.Result.City) + "\r\n" +
-                            string.Format("Result.Street:{0}", userAuthR.Result.Street) + "\r\n" +
-                            string.Format("Result.Address:{0}", userAuthR.Result.Address) + "\r\n" +
-                            string.Format("Result.ContactPhoneNum:{0}", userAuthR.Result.ContactPhoneNum) + "\r\n" +
-                            string.Format("Result.Email:{0}", userAuthR.Result.Email) + "\r\n" +
-                            string.Format("Result.ContactHomeUrl:{0}", userAuthR.Result.ContactHomeUrl) + "\r\n" +
-                            string.Format("Result.QrProvisionMethod:{0}", userAuthR.Result.QrProvisionMethod) + "\r\n" +
-                            string.Format("Result.MerchantId:{0}", userAuthR.Result.MerchantId.ToString()) + "\r\n" +
-                            string.Format("Result.PwChangedFlag:{0}", userAuthR.Result.PwChangedFlag.ToString()) + "\r\n" +
-                            string.Format("Result.PayTypeList:{0}", "下記に記載") + "\r\n" +
-                            string.Format("BalanceAmount:{0}\r\n", userAuthR.BalanceAmount) + 
-                            string.Format("=== PayTypeList === \r\n");
-
-                        foreach (MakeJsons.PayList list in userAuthR.Result.PayTypeList)
+                        if (mode == 0)
                         {
-                            authres +=
-                                string.Format("list.PayTypeId:{0} \r\n", list.PayTypeId.ToString()) +
-                                string.Format("list.PayTypeCode:{0} \r\n", list.PayTypeCode) +
-                                string.Format("list.PayTypeName:{0} \r\n", list.PayTypeName) +
-                                string.Format("list.QrcodeRegExr:{0} \r\n", list.QrcodeRegExr) +
-                                string.Format("list.DispQrcodeFlag:{0} \r\n", list.DispQrcodeFlag.ToString()) +
-                                string.Format("list.ReadQrcodeFlag:{0} \r\n", list.ReadQrcodeFlag.ToString());
-                        }
+                            /*
+                             * ユーザー認証API
+                             */
+                            // Response Jsonデシリアライズ
+                            userAuthR = new MakeJsons.UserAuthR();
+                            userAuthR = JsonConvert.DeserializeObject<MakeJsons.UserAuthR>(g);
+                            // 結果コード移入
+                            rReturnCode = userAuthR.ReturnCode;
+                            // 処理結果コード移入(ユーザー認証リターンの場合はResultCodeが無いので「SUCCESS」を設定しておく)
+                            rResultCode = cResult_Code_SS;
+                            // 確認のためアイアログ表示
+                            string authres =
+                                string.Format("ReturnCode:{0}", userAuthR.ReturnCode) + "\r\n" +
+                                string.Format("ReturnMessage:{0}", userAuthR.ReturnMessage) + "\r\n" +
+                                string.Format("MsgSummaryCode:{0}", userAuthR.MsgSummaryCode) + "\r\n" +
+                                string.Format("MsgSummary:{0}", userAuthR.MsgSummary) + "\r\n" +
+                                string.Format("Result.CredentialKey:{0}", userAuthR.Result.CredentialKey) + "\r\n" +
+                                string.Format("Result.PartnerFullName:{0}", userAuthR.Result.PartnerFullName) + "\r\n" +
+                                string.Format("Result.Description:{0}", userAuthR.Result.Description) + "\r\n" +
+                                string.Format("Result.AdminPassword:{0}", userAuthR.Result.AdminPassword) + "\r\n" +
+                                string.Format("Result.AuthForRefund:{0}", userAuthR.Result.AuthForRefund.ToString()) + "\r\n" +
+                                string.Format("Result.CashNumber:{0}", userAuthR.Result.CashNumber) + "\r\n" +
 
-                        Console.WriteLine(authres, "帰ってきたjsonパラメタ");
+                                string.Format("Result.WarningWord:{0}", userAuthR.Result.WarningWord) + "\r\n" +
+                                string.Format("Result.CheckSnFlag:{0}", userAuthR.Result.CheckSnFlag.ToString()) + "\r\n" +
+                                string.Format("Result.MerchantFullName:{0}", userAuthR.Result.MerchantFullName) + "\r\n" +
+                                string.Format("Result.MerchantName:{0}", userAuthR.Result.MerchantName) + "\r\n" +
+                                string.Format("Result.MerchantKanaName:{0}", userAuthR.Result.MerchantKanaName) + "\r\n" +
+                                string.Format("Result.Prefectures:{0}", userAuthR.Result.Prefectures) + "\r\n" +
+                                string.Format("Result.City:{0}", userAuthR.Result.City) + "\r\n" +
+                                string.Format("Result.Street:{0}", userAuthR.Result.Street) + "\r\n" +
+                                string.Format("Result.Address:{0}", userAuthR.Result.Address) + "\r\n" +
+                                string.Format("Result.ContactPhoneNum:{0}", userAuthR.Result.ContactPhoneNum) + "\r\n" +
+                                string.Format("Result.Email:{0}", userAuthR.Result.Email) + "\r\n" +
+                                string.Format("Result.ContactHomeUrl:{0}", userAuthR.Result.ContactHomeUrl) + "\r\n" +
+                                string.Format("Result.QrProvisionMethod:{0}", userAuthR.Result.QrProvisionMethod) + "\r\n" +
+                                string.Format("Result.MerchantId:{0}", userAuthR.Result.MerchantId.ToString()) + "\r\n" +
+                                string.Format("Result.PwChangedFlag:{0}", userAuthR.Result.PwChangedFlag.ToString()) + "\r\n" +
+                                string.Format("Result.PayTypeList:{0}", "下記に記載") + "\r\n" +
+                                string.Format("BalanceAmount:{0}\r\n", userAuthR.BalanceAmount) +
+                                string.Format("=== PayTypeList === \r\n");
+
+                            foreach (MakeJsons.PayList list in userAuthR.Result.PayTypeList)
+                            {
+                                authres +=
+                                    string.Format("list.PayTypeId:{0} \r\n", list.PayTypeId.ToString()) +
+                                    string.Format("list.PayTypeCode:{0} \r\n", list.PayTypeCode) +
+                                    string.Format("list.PayTypeName:{0} \r\n", list.PayTypeName) +
+                                    string.Format("list.QrcodeRegExr:{0} \r\n", list.QrcodeRegExr) +
+                                    string.Format("list.DispQrcodeFlag:{0} \r\n", list.DispQrcodeFlag.ToString()) +
+                                    string.Format("list.ReadQrcodeFlag:{0} \r\n", list.ReadQrcodeFlag.ToString());
+                            }
+
+                            Console.WriteLine(authres, "帰ってきたjsonパラメタ");
+
+                        }
                         rtn = true;
 
                     }
@@ -752,8 +853,9 @@ namespace QBCodePay
                             Console.WriteLine(cpmres, "帰ってきたjsonパラメタ");
 
                         }
-                        // 処理正常でかつ支払完了時のみ支払確認処理をさせない
-                        if ((rReturnCode == cReturnCode) && (rResultCode == cResult_Code_S))
+                        // 処理正常でかつ支払完了時または返金確認完了時のみ支払確認または返金確認処理をさせない
+                        if ((rReturnCode == cReturnCode) && 
+                            ((rResultCode == cResult_Code_S) || (rResultCode == cResult_Code_SS) || (rResultCode == cResult_Code_F)))
                         {
                             rtn = true;
                             if (mode == 0)

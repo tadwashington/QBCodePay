@@ -33,6 +33,7 @@
             this.txtEndPint = new System.Windows.Forms.TextBox();
             this.label1 = new System.Windows.Forms.Label();
             this.btnPost = new System.Windows.Forms.Button();
+            this.cbxTradeList = new System.Windows.Forms.CheckBox();
             this.cbxRefund = new System.Windows.Forms.CheckBox();
             this.SuspendLayout();
             // 
@@ -93,15 +94,27 @@
             this.btnPost.UseVisualStyleBackColor = true;
             this.btnPost.Click += new System.EventHandler(this.btnPost_Click);
             // 
+            // cbxTradeList
+            // 
+            this.cbxTradeList.AutoSize = true;
+            this.cbxTradeList.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
+            this.cbxTradeList.ForeColor = System.Drawing.Color.Blue;
+            this.cbxTradeList.Location = new System.Drawing.Point(258, 91);
+            this.cbxTradeList.Name = "cbxTradeList";
+            this.cbxTradeList.Size = new System.Drawing.Size(102, 16);
+            this.cbxTradeList.TabIndex = 9;
+            this.cbxTradeList.Text = "取引記録照会";
+            this.cbxTradeList.UseVisualStyleBackColor = true;
+            // 
             // cbxRefund
             // 
             this.cbxRefund.AutoSize = true;
             this.cbxRefund.Font = new System.Drawing.Font("MS UI Gothic", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
             this.cbxRefund.ForeColor = System.Drawing.Color.Red;
-            this.cbxRefund.Location = new System.Drawing.Point(258, 136);
+            this.cbxRefund.Location = new System.Drawing.Point(258, 135);
             this.cbxRefund.Name = "cbxRefund";
             this.cbxRefund.Size = new System.Drawing.Size(56, 18);
-            this.cbxRefund.TabIndex = 4;
+            this.cbxRefund.TabIndex = 8;
             this.cbxRefund.Text = "返金";
             this.cbxRefund.UseVisualStyleBackColor = true;
             // 
@@ -109,7 +122,8 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(411, 174);
+            this.ClientSize = new System.Drawing.Size(445, 238);
+            this.Controls.Add(this.cbxTradeList);
             this.Controls.Add(this.cbxRefund);
             this.Controls.Add(this.btnPost);
             this.Controls.Add(this.label1);
@@ -131,6 +145,7 @@
         private System.Windows.Forms.TextBox txtEndPint;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Button btnPost;
+        private System.Windows.Forms.CheckBox cbxTradeList;
         private System.Windows.Forms.CheckBox cbxRefund;
     }
 }
