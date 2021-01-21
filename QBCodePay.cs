@@ -155,6 +155,10 @@ namespace QBCodePay
         /// </summary>
         MakeJsons.ReFoundChk reFoundC;
         /// <summary>
+        /// 取引記録確認API (GET METHOD) レスポンスJSONクラスインスタンス
+        /// </summary>
+        MakeJsons.StoreTradeView storeView;
+        /// <summary>
         /// 結果コード
         /// </summary>
         string rReturnCode { get; set; }
@@ -436,7 +440,7 @@ namespace QBCodePay
                             }
                             else
                             {
-                                if ((!string.IsNullOrEmpty(resp.ReturnCode)) && (resp.ReturnCode != cReturnCode))
+                                if ((!string.IsNullOrEmpty(rReturnCode)) && (rReturnCode != cReturnCode))
                                 {
                                     // エラー処理へ
                                     break;
@@ -458,7 +462,7 @@ namespace QBCodePay
         /// <summary>
         /// Get Method 詳細
         /// </summary>
-        /// <param name="s"></param>
+        /// <param name="s">URL</param>
         private async Task<bool> GetApiFrmUrl(string s,int mode = 0)
         {
             bool rtn = false;
@@ -472,16 +476,20 @@ namespace QBCodePay
                  * storeOrderId(支払伝票番号)固定20桁を設定する
                  */
                 // 支払(返金)伝票番号(半角数字固定20桁)
-                decimal n = 0;
+                System.Numerics.BigInteger big = 0;
+                string n = string.Empty;
                 // 対象支払伝票番号(半角数字固定20桁)
-                decimal nn =0;
+                string nn =string.Empty;
                 // HttpHeader編集
                 var client = new HttpClient();
-                // QRコード支払と返金処理のパラメタ設定
+                /*
+                 * QRコード支払と返金処理および取引記録照会のパラメタ設定
+                 */
+                // 
                 if (mode == 0)
                 {
                     // 支払伝票番号をセット
-                    n = 11234567890123456789;
+                    n = "01234567890123456789";
                     // 支払確認API URLとクエリパラメタをセット
                     s += pCPMUrlGet;
 
@@ -493,11 +501,11 @@ namespace QBCodePay
                     // タイムアウト設定
                     client.Timeout = TimeSpan.FromMilliseconds(pCPMTimeOut);
                 }
-                else
+                else if(mode == 1)
                 {
-                    // 返金伝票番号をセット
-                    n = 11234567890123456789;
-                    nn = 15765432109876543210;
+                    // 返金伝票番号をセット(クエリパラメタ編集)
+                    n = "98765432109876543210";
+                    nn = "99876543210987654321";
                     // 返金確認API URLとクエリパラメタをセット
                     s += pRefundUrlGet;
 
@@ -509,6 +517,41 @@ namespace QBCodePay
                     s += "?" + await new FormUrlEncodedContent(prms).ReadAsStringAsync();
                     // タイムアウト設定
                     client.Timeout = TimeSpan.FromMilliseconds(pRefundTimeOut);
+                }
+                else if(mode == 2)
+                {
+                    // 取引記録照会(店舗単位)
+                    /*
+                     * ※一日分のデータのみ取得できる。複数日のデータ取得には繰り返し呼び出すことが必要。
+                     */
+                    // リクエストクエリパラメタ編集
+                    var vdate = DateTime.Today.ToString("yyyyMMdd");    // 取引日
+                    /*
+                     * ※指定された 日付 に取引データが存在する場合、その日付のデータ を返す 。
+                     * データが存在しない、且つ 日付が 日付 ( 日付 ( の間 にある場合、
+                     * 日付から 日付 (まで 遡って 検索し、 取引のある日付のデータを返す。
+                     */
+                    var vdateF = "19000101";                            // From日付
+                    var vdateE = "20551231";                            // To日付
+                    /*
+                     * "PAID":支払 "REFUND":返金 （カンマ区切り複数指定可 。 設定しない場合は両方を対象とする。
+                     */
+                    var vstatus = "PAID,REFUND";                        // 注文ステータス
+                    var vchannel = "channel=[Wechat, Alipay, " +         // 決済種別(決済種別コード<カンマ区切りで複数指定。指定なしは全種別対象>)
+                        "Docomo, auPAY, PayPay, LINEPay, RakutenPay,GinkoPay, merpay";
+                    var vlimit = "1";                                   // 最大件数(1固定※1以外を指定しても結果は変わらない)
+                    // 取引記録照会(店舗単位)API URLとクエリをセット
+                    s += pTradeStore;
+                    prms = new Dictionary<string, string>()
+                    {
+                        {"date",vdate },
+                        {"dateFrom",vdateF },
+                        {"dateTo",vdateE },
+                        {"status",vstatus },
+                        {"channel",vchannel },
+                        {"limit",vlimit },
+                    };
+                    s += "?" + await new FormUrlEncodedContent(prms).ReadAsStringAsync();
                 }
                 AddHttpHeader2(ref client);
                 var res = await client.GetAsync(s);
@@ -574,18 +617,57 @@ namespace QBCodePay
                                 string.Format("Result.Return_code:{0}", reFoundC.Result.Return_code) + "\r\n" +
                                 string.Format("Result.Result_code:{0}", reFoundC.Result.Result_code) + "\r\n" +
                                 string.Format("Result.Partner_order_id:{0}", reFoundC.Result.Partner_order_id) + "\r\n" +
-                                string.Format("Result.Total_fee:{0}", reFoundC.Result.Amount.ToString()) + "\r\n" +
+                                string.Format("Result.Total_fee:{0}", reFoundC.Result.Amount) + "\r\n" +
                                 string.Format("Result.Channel:{0}", reFoundC.Result.Channel) + "\r\n" +
                                 string.Format("Result.Order_id:{0}", reFoundC.Result.Order_id) + "\r\n" +
                                 string.Format("Result.Create_time:{0}", reFoundC.Result.Create_time) + "\r\n" +
                                 string.Format("Result.Pay_time:{0}", reFoundC.Result.Pay_time) + "\r\n" +
-                                string.Format("Result.Total_fee:{0}", reFoundC.Result.Total_fee.ToString()) + "\r\n" +
-                                string.Format("Result.Real_fee:{0}", reFoundC.Result.Real_fee.ToString())
+                                string.Format("Result.Total_fee:{0}", reFoundC.Result.Total_fee) + "\r\n" +
+                                string.Format("Result.Real_fee:{0}", reFoundC.Result.Real_fee)
                                 ;
 
-                            Console.WriteLine(rs, "帰ってきたjsonパラメタ");
+                            Console.WriteLine(rs);
 
 
+                        }
+                        else if(mode == 2)
+                        {
+                            // 取引記録確認(店舗単位)API
+                            storeView = new MakeJsons.StoreTradeView();
+                            storeView = JsonConvert.DeserializeObject<MakeJsons.StoreTradeView>(g);
+                            // 結果コード移入
+                            rReturnCode = storeView.ReturnCode;
+                            // 処理結果コード移入(Result.result_codeは削除対象で基本null値が還るのでreturn_codeで代替えする)
+                            rResultCode = string.IsNullOrEmpty(storeView.Result.Result_code) ? storeView.Result.Return_code : storeView.Result.Result_code;
+                            string rs =
+                                string.Format("ReturnCode:{0}\r\n", storeView.ReturnCode) +
+                                string.Format("ReturnMessage:{0}\r\n", storeView.ReturnMessage) +
+                                string.Format("MsgSummaryCode:{0}\r\n", storeView.MsgSummaryCode) +
+                                string.Format("MsgSummary:{0}\r\n", storeView.MsgSummary) +
+                                string.Format("Result.Return_code:{0}\r\n", storeView.Result.Return_code) +
+                                string.Format("Result.OrderDate:{0}\r\n", storeView.Result.OrderDate) +
+                                string.Format("Result.Result_code:{0}\r\n", storeView.Result.Result_code) +
+                                string.Format("Result.Transaction_count:{0}\r\n", storeView.Result.Transaction_count) +
+                                string.Format("*** 以下、明細行 *** \r\n");
+
+                            foreach (MakeJsons.StoreTradeViewLine line in storeView.Result.Data)
+                            {
+                                rs +=
+                                    string.Format("line.Record_type:{0}\r\n", line.Record_type) +
+                                    string.Format("line.Status:{0}\r\n", line.Status) +
+                                    string.Format("line.Partner_order_id:{0}\r\n", line.Partner_order_id) +
+                                    string.Format("line.Currency:{0}\r\n", line.Currency) +
+                                    string.Format("line.Create_time:{0}\r\n", line.Create_time) +
+                                    string.Format("line.Channel:{0}\r\n", line.Channel) +
+                                    string.Format("line.Real_fee:{0}\r\n", line.Real_fee) +
+                                    string.Format("line.Order_body:{0}\r\n", line.Order_body) +
+                                    string.Format("line.Order_id:{0}\r\n", line.Order_id) +
+                                    string.Format("line.Partner_refund_id:{0}\r\n", line.Partner_refund_id) +
+                                    string.Format("line.Refund_id:{0}\r\n", line.Refund_id) +
+                                    string.Format("line.Refund_fee:{0}\r\n", line.Refund_fee);
+                            }
+                            rs += "*** END ***";
+                            Console.WriteLine(rs);
                         }
                         // API正常
                         if (rReturnCode == cReturnCode)
@@ -607,6 +689,12 @@ namespace QBCodePay
                                 {
                                     dMsg = "返金結果確認が完了しました。";
                                     dTtl = "返金結果確認";
+                                }
+                                else if(mode == 2)
+                                {
+                                    dMsg = "取引記録照会確認が完了しました。";
+                                    dTtl = "取引記録照会確認";
+
                                 }
                                 MessageBox.Show(dMsg, dTtl);
                             }
@@ -1031,7 +1119,7 @@ namespace QBCodePay
                     req.Order_id = "11234567890123456789";
                     req.SerialNo = "KONAMISPORTS CLUB HONTEN-4501001";
                     req.Description = "テストの取引備考でざます";
-                    req.Price = 500;
+                    req.Price = "500";
                     req.Auth_code = "0001002003004005006007008009";
                     req.Currency = "JPY";
                     req.Operator = "abcdefg001";
@@ -1049,7 +1137,7 @@ namespace QBCodePay
                     req.Refund_id = "11234567892123456789";
                     req.Order_id = "98765432129876543211";
                     req.SerialNo = "SHINAGAWA HONTEN 4501001";
-                    req.Fee = 12345678;
+                    req.Fee = "12345678";
                     var JsonData = JsonConvert.SerializeObject(req);
                     jdata = JsonData;
                 }

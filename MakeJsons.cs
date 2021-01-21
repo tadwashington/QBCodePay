@@ -200,7 +200,7 @@ namespace QBCodePay
             /// 返金時認証要否フラグ
             /// </summary>
             [JsonProperty("authForRefund")]
-            public int AuthForRefund;
+            public string AuthForRefund;
             /// <summary>
             /// レジ番号
             /// </summary>
@@ -215,7 +215,7 @@ namespace QBCodePay
             /// 端末識別番号チェック要否
             /// </summary>
             [JsonProperty("checkSnFlag")]
-            public int CheckSnFlag;
+            public string CheckSnFlag;
             /// <summary>
             /// 店舗名称
             /// </summary>
@@ -275,13 +275,13 @@ namespace QBCodePay
             /// 店舗ID
             /// </summary>
             [JsonProperty("merchantId")]
-            public long MerchantId;
+            public string MerchantId;
             /// <summary>
             /// ﾕｰｻﾞ初期PW 変更済みﾌﾗｸﾞ
             /// 1：パスワード変更済み 0：初期パスワード未変更
             /// </summary>
             [JsonProperty("pwChangedFlag")]
-            public int PwChangedFlag;
+            public string PwChangedFlag;
             /// <summary>
             /// 削除予定フィールド
             /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
@@ -322,7 +322,7 @@ namespace QBCodePay
             /// 決済種別ID
             /// </summary>
             [JsonProperty("payTypeId")]
-            public int PayTypeId;
+            public string PayTypeId;
             /// <summary>
             /// 決済種別コード
             /// </summary>
@@ -342,12 +342,12 @@ namespace QBCodePay
             /// MPMフラグ
             /// </summary>
             [JsonProperty("dispQrcodeFlag")]
-            public int DispQrcodeFlag;
+            public string DispQrcodeFlag;
             /// <summary>
             /// CPMフラグ
             /// </summary>
             [JsonProperty("readQrcodeFlag")]
-            public int ReadQrcodeFlag;
+            public string ReadQrcodeFlag;
         }
         #endregion
         #region "QRコード支払（CPM) API"
@@ -376,7 +376,7 @@ namespace QBCodePay
             /// 支払金額
             /// </summary>
             [JsonProperty("price")]
-            public int Price;
+            public string Price;
             /// <summary>
             /// 決済QRコード
             /// </summary>
@@ -429,7 +429,7 @@ namespace QBCodePay
             /// 利用後残高
             /// </summary>
             [JsonProperty("balanceAmount")]
-            public int BalanceAmount;
+            public string BalanceAmount;
         }
         /// <summary>
         /// 詳細結果(第2階層)
@@ -471,12 +471,12 @@ namespace QBCodePay
             /// 要求決済金額
             /// </summary>
             [JsonProperty("total_fee")]
-            public int Total_fee;
+            public string Total_fee;
             /// <summary>
             /// 決済金額
             /// </summary>
             [JsonProperty("real_fee")]
-            public int Real_fee;
+            public string Real_fee;
             /// <summary>
             /// 決済種別
             /// </summary>
@@ -931,7 +931,7 @@ namespace QBCodePay
             /// 半角数字(8桁可変)-必須
             /// </summary>
             [JsonProperty("fee")]
-            public int Fee;
+            public string Fee;
         }
         [JsonObject("reFoundRes")]
         public class ReFoundRes
@@ -1019,7 +1019,7 @@ namespace QBCodePay
             /// 半角数字(8桁可変)
             /// </summary>
             [JsonProperty("amount")]
-            public int Amount;
+            public string Amount;
             /// <summary>
             /// 決済種別
             /// 半角英字(8桁可変)
@@ -1050,13 +1050,13 @@ namespace QBCodePay
             /// 半角数字(8桁可変)-元支払伝票の決済リクエスト時の決済金額
             /// </summary>
             [JsonProperty("total_fee")]
-            public int Total_fee;
+            public string Total_fee;
             /// <summary>
             /// 決済金額
             /// 半角数字(8桁可変)-要求決済金額と同じ値
             /// </summary>
             [JsonProperty("real_fee")]
-            public int Real_fee;
+            public string Real_fee;
             /// 削除予定フィールド
             /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
             [JsonProperty("sum_refund_fee")]
@@ -1215,7 +1215,7 @@ namespace QBCodePay
             /// 半角数字8桁可変
             /// </summary>
             [JsonProperty("amount")]
-            public int Amount;
+            public string Amount;
             /// <summary>
             /// 決済種別
             /// 半角英字8桁可変
@@ -1246,13 +1246,13 @@ namespace QBCodePay
             /// 半角数字8桁可変
             /// </summary>
             [JsonProperty("total_fee")]
-            public int Total_fee;
+            public string Total_fee;
             /// <summary>
             /// 支払金額
             /// 半角数字8桁可変
             /// </summary>
             [JsonProperty("real_fee")]
-            public int Real_fee;
+            public string Real_fee;
             /// 削除予定フィールド
             /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
             [JsonProperty("sum_refund_fee")]
@@ -1437,7 +1437,7 @@ namespace QBCodePay
             /// 半角数字10桁可変
             /// </summary>
             [JsonProperty("balanceAmount")]
-            public int BalanceAmount;
+            public string BalanceAmount;
         }
         /// <summary>
         /// 結果詳細(第2階層)
@@ -1526,13 +1526,13 @@ namespace QBCodePay
             /// 半角数字8桁可変
             /// </summary>
             [JsonProperty("real_fee")]
-            public int Real_fee;
+            public string Real_fee;
             /// <summary>
             /// 返金金額合計
             /// 半角数字8桁可変
             /// </summary>
             [JsonProperty("sum_refund_fee")]
-            public int Sum_refund_fee;
+            public string Sum_refund_fee;
             /// <summary>
             /// 取引日時
             /// 半角数字記号19桁固定
@@ -1544,7 +1544,7 @@ namespace QBCodePay
             /// 半角数字8桁可変
             /// </summary>
             [JsonProperty("total_fee")]
-            public int Total_fee;
+            public string Total_fee;
             /// <summary>
             /// 取引備考
             /// 全半角文字50byte可変
@@ -1574,7 +1574,7 @@ namespace QBCodePay
             /// 半角数字8桁可変
             /// </summary>
             [JsonProperty("refund_fee")]
-            public int Refund_fee;
+            public string Refund_fee;
             /// <summary>
             /// これ以降は削除予定項目
             /// </summary>
