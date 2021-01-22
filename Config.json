@@ -12,9 +12,71 @@
     "postTrdInfCrpUrl": "/portal/queryapi/v1/qr/ordersforpartner",
     "accessPort": 3000
   },
-  "pollingTimeout":{
-      "getPollTime": 2000,
-      "cpmTimeOut": 30000,
-      "refundTimeOut": 300000
-  }
+  "pollingTimeout": {
+    "getPollTime": 2000,
+    "cpmTimeOut": 30000,
+    "refundTimeOut": 300000
+  },
+  "brands": [
+    {
+      "id": "1",
+      "kind": "Alipay",
+      "name": "Alipay",
+      "partRefund": true
+    },
+    {
+      "id": "2",
+      "kind": "Wechat",
+      "name": "Wechat",
+      "partRefund": true
+    },
+    {
+      "id": "3",
+      "kind": "Docomo",
+      "name": "d払い",
+      "partRefund": true
+    },
+    {
+      "id": "4",
+      "kind": "auPAY",
+      "name": "auPAY",
+      "partRefund": false
+    },
+    {
+      "id": "5",
+      "kind": "PayPay",
+      "name": "PayPay",
+      "partRefund": false
+    },
+    {
+      "id": "6",
+      "kind": "LINEPay",
+      "name": "LINEPay",
+      "partRefund": true
+    },
+    {
+      "id": "7",
+      "kind": "RakutenPay",
+      "name": "楽天ペイ",
+      "partRefund": false
+    },
+    {
+      "id": "8",
+      "kind": "GinkoPay",
+      "name": "銀行Pay",
+      "partRefund": false
+    },
+    {
+      "id": "9",
+      "kind": "merpay",
+      "name": "メルペイ",
+      "partRefund": false
+    },
+    {
+      "id": "10",
+      "kind": "QUOPay",
+      "name": "QUOPay",
+      "partRefund": false
+    }
+  ]
 }

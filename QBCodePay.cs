@@ -57,6 +57,36 @@ namespace QBCodePay
         #endregion
 
         #region "プロパティ群"
+        public struct Returns
+        {
+            /// <summary>
+            /// 結果コード
+            /// </summary>
+            public string rReturnCode { get; set; }
+            /// <summary>
+            /// 処理結果コード
+            /// </summary>
+            public string rResultCode { get; set; }
+            /// <summary>
+            /// 結果メッセージ
+            /// 結果コード(ReturnCode)が "MP10000"以外の場合のみ設定
+            /// つまりエラー発生時のみ設定される
+            /// </summary>
+            public string rReturnMessage { get; set; }
+            /// <summary>
+            /// 集約結果コード
+            /// エラー時に設定される(エラーコード一覧[qbError.json]に内容記述)
+            /// </summary>
+            public string rMsgSummaryCode { get; set; }
+            /// <summary>
+            /// 集約結果メッセージ
+            /// エラー時に設定される(エラーコード一覧[qbError.json]に内容記述)
+            /// </summary>
+            public string rMsgSummary { get; set; }
+        }
+        // Returnsインスタンス
+        public Returns returns;
+
         /// <summary>
         /// API URL
         /// </summary>
@@ -132,6 +162,32 @@ namespace QBCodePay
         /// アクセスポート
         /// </summary>
         public int pAccessPort { get; set; }
+        /// <summary>
+        /// 決済種別一覧[配列]
+        /// </summary>
+        public List<PaymentType> PayTypes;
+        /// <summary>
+        /// 決済種別一覧行クラス
+        /// </summary>
+        public class PaymentType
+        {
+            /// <summary>
+            /// 決済種別ID
+            /// </summary>
+            public string PayId;
+            /// <summary>
+            /// 決済種別コード
+            /// </summary>
+            public string PayKind;
+            /// <summary>
+            /// 決済種別名称
+            /// </summary>
+            public string PayName;
+            /// <summary>
+            /// 部分返金可否フラグ(true:OK、false:NG)
+            /// </summary>
+            public bool PayPartRefund;
+        }
         #endregion
         #region "インスタンス群"
         /// <summary>
@@ -158,16 +214,9 @@ namespace QBCodePay
         /// 取引記録確認API (GET METHOD) レスポンスJSONクラスインスタンス
         /// </summary>
         MakeJsons.StoreTradeView storeView;
-        /// <summary>
-        /// 結果コード
-        /// </summary>
-        string rReturnCode { get; set; }
-        /// <summary>
-        /// 処理結果コード
-        /// </summary>
-        string rResultCode { get; set; }
-
         #endregion
+
+
         public QBCodePay()
         {
             InitializeComponent();
@@ -221,6 +270,30 @@ namespace QBCodePay
                 pTradeCorp = jsn.urls.PostTrdInfCrpUrl;
                 // アクセスポート
                 pAccessPort = jsn.urls.AccessPort;
+                // ポーリング間隔
+                pGetPollTime = jsn.pollingTimeout.GetPollTime;
+                // QRコード決済時タイムアウト値
+                pCPMTimeOut = jsn.pollingTimeout.CpmTimeOut;
+                // 返金処理タイムアウト値
+                pRefundTimeOut = jsn.pollingTimeout.RefundTimeOut;
+                // 決済種別一覧格納
+                PayTypes = new List<PaymentType>();
+                foreach(MakeJsons.Brands b in jsn.BrandLst)
+                {
+                    PaymentType p = new PaymentType();
+                    // 決済種別ID
+                    p.PayId = b.Id;
+                    // 決済種別コード
+                    p.PayKind = b.Kind;
+                    // 決済種別名
+                    p.PayName = b.Name;
+                    // 部分返金可否(true:OK false:NG)
+                    p.PayPartRefund = b.PartRefund;
+                    // 行追加
+                    PayTypes.Add(p);
+                }
+                // Clear
+                jsn = null;
             }
             catch (Exception e)
             {
@@ -241,10 +314,10 @@ namespace QBCodePay
             {
                 if (!string.IsNullOrEmpty(surl))
                 {
+                    // URL 正規表現チェック
                     rtn = Regex.IsMatch(surl,
                        @"^s?https?://[-_.!~*'()a-zA-Z0-9;/?:@&=+$,%#]+$"
                     );
-
                     if (rtn == false)
                     {
                         Console.WriteLine(string.Format("EndPointとして認識できない文字列です。"));
@@ -317,6 +390,67 @@ namespace QBCodePay
         #endregion
         #region "Http Method"
         /// <summary>
+        /// PUT METHOD 
+        /// </summary>
+        /// <param name="mode">
+        /// API選択(0:支払,1:返金)
+        /// </param>
+        private async void Put_Method(int mode = 0)
+        {
+            // URL正当性チェック
+            if (!ChkEndPoint(pUrl))
+            {
+                return;
+            }
+
+            string jdata = string.Empty;
+            // QRコード支払(CPM)API[PUT METHOD]用 jsonデータ生成～httpRequest送信
+            if (PutCPMJson(ref jdata, mode))
+            {
+                // Put Method Request送信(jdata:JSONフォーマット)
+                bool rtn = await PutApiFrmUrl(pUrl, jdata, mode);
+                // メソッドリターンがfalseでAPI処理が正常の場合は支払確認処理をPAULING
+                if ((!string.IsNullOrEmpty(returns.rReturnCode)) && (!string.IsNullOrEmpty(returns.rResultCode)))
+                {
+                    if ((rtn == false) && (returns.rReturnCode == cReturnCode) &&
+                        ((returns.rResultCode == cResult_Code_P) ||
+                        (returns.rResultCode == cResult_Code_W)))
+                    {
+                        while (true)
+                        {
+                            // GET METHOD PAULING
+                            if (await GetPauling(mode) == true)
+                            {
+                                // 処理正常でかつ支払完了または返金確認完了ならPAULING終了
+                                if ((!string.IsNullOrEmpty(returns.rReturnCode)) && (!string.IsNullOrEmpty(returns.rResultCode)) &&
+                                    (returns.rReturnCode == cReturnCode) &&
+                                    ((returns.rResultCode == cResult_Code_S) || 
+                                    (returns.rResultCode == cResult_Code_SS) || (returns.rResultCode == cResult_Code_F)))
+                                {
+                                    // 支払完了
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                if ((!string.IsNullOrEmpty(returns.rReturnCode)) && (returns.rReturnCode != cReturnCode))
+                                {
+                                    // エラー処理へ
+                                    break;
+                                }
+
+                            }
+
+                        }
+                    }
+                }
+            }
+            else
+            {
+                MessageBox.Show("PUT METHOD RequestJSONファイルの生成に失敗しました。", "JSONファイル生成エラー");
+            }
+        }
+        /// <summary>
         /// GET METHOD
         /// </summary>
         private async void Get_Method(int mode = 0)
@@ -330,7 +464,7 @@ namespace QBCodePay
              * APIレスポンスのReturn_Codeが"MP10000(処理正常)"でかつメソッドリターンがfalseの場合は 
              * 支払待ちと判定し支払確認(GET METHOD)のPaulingを行う
              */
-            if ((rReturnCode == cReturnCode) && (rtn = false))
+            if ((returns.rReturnCode == cReturnCode) && (rtn = false))
             {
                 while (true)
                 {
@@ -338,10 +472,10 @@ namespace QBCodePay
                     if (await GetPauling() == true)
                     {
                         // 処理正常でかつ支払完了ならPAULING終了
-                        if ((rResultCode == cReturnCode) && 
-                            ((rResultCode == cResult_Code_S) || 
-                            (rResultCode == cResult_Code_SS) ||
-                            (rResultCode == cResult_Code_F))
+                        if ((returns.rResultCode == cReturnCode) && 
+                            ((returns.rResultCode == cResult_Code_S) || 
+                            (returns.rResultCode == cResult_Code_SS) ||
+                            (returns.rResultCode == cResult_Code_F))
                             )
                         {
                             // 支払完了
@@ -350,7 +484,7 @@ namespace QBCodePay
                     }
                     else
                     {
-                        if ((rReturnCode != cReturnCode))
+                        if ((returns.rReturnCode != cReturnCode))
                         {
                             // エラー処理へ
                             break;
@@ -394,67 +528,6 @@ namespace QBCodePay
                 Console.WriteLine("PUT METHOD実行時にエラー:{0}", e.Message);
                 MessageBox.Show(string.Format("POST METHOD異常終了:{0}",e.Message), "POST METHOD 実行");
                 rtn = false;
-            }
-
-        }
-        /// <summary>
-        /// PUT METHOD 
-        /// </summary>
-        /// <param name="mode">
-        /// API選択(0:支払,1:返金)
-        /// </param>
-        private async void Put_Method(int mode = 0)
-        {
-            // URL正当性チェック
-            if (!ChkEndPoint(pUrl))
-            {
-                return;
-            }
-
-            string jdata = string.Empty;
-            // QRコード支払(CPM)API[PUT METHOD]用 jsonデータ生成～httpRequest送信
-            if (PutCPMJson(ref jdata,mode))
-            {
-                // Put Method Request送信(jdata:JSONフォーマット)
-                bool rtn = await PutApiFrmUrl(pUrl, jdata, mode);
-                // メソッドリターンがfalseでAPI処理が正常の場合は支払確認処理をPAULING
-                if ((!string.IsNullOrEmpty(rReturnCode)) && (!string.IsNullOrEmpty(rResultCode)))
-                {
-                    if ((rtn == false) && (rReturnCode == cReturnCode) && 
-                        ((rResultCode == cResult_Code_P) || 
-                        (rResultCode == cResult_Code_W)))
-                    {
-                        while (true)
-                        {
-                            // GET METHOD PAULING
-                            if (await GetPauling(mode) == true)
-                            {
-                                // 処理正常でかつ支払完了または返金確認完了ならPAULING終了
-                                if ((!string.IsNullOrEmpty(rReturnCode)) && (!string.IsNullOrEmpty(rResultCode)) &&
-                                    (rReturnCode == cReturnCode) && 
-                                    ((rResultCode == cResult_Code_S) || (rResultCode == cResult_Code_SS) || (rResultCode == cResult_Code_F)))
-                                {
-                                    // 支払完了
-                                    break;
-                                }
-                            }
-                            else
-                            {
-                                if ((!string.IsNullOrEmpty(rReturnCode)) && (rReturnCode != cReturnCode))
-                                {
-                                    // エラー処理へ
-                                    break;
-                                }
-
-                            }
-
-                        }
-                    }
-                }
-            }
-            else
-            {
-                MessageBox.Show("PUT METHOD RequestJSONファイルの生成に失敗しました。", "JSONファイル生成エラー");
             }
 
         }
@@ -568,10 +641,19 @@ namespace QBCodePay
                             // 支払確認API
                             resp = new MakeJsons.CpmCheck();
                             resp = JsonConvert.DeserializeObject<MakeJsons.CpmCheck>(g);
-                            // 結果コード移入
-                            rReturnCode = resp.ReturnCode;
-                            // 処理結果コード移入
-                            rResultCode = resp.Result.Result_code;
+                            // 結果JSON項目値を格納
+                            returns = new Returns();
+                            // 結果コード
+                            returns.rReturnCode = resp.ReturnCode;
+                            // 処理結果コード
+                            returns.rResultCode = resp.Result.Result_code;
+                            // 結果メッセージ
+                            returns.rReturnMessage = resp.ReturnMessage;
+                            // 集計結果コード
+                            returns.rMsgSummaryCode = resp.MsgSummaryCode;
+                            // 集計結果メッセージ
+                            returns.rMsgSummary = resp.MsgSummary;
+
                             // 確認のためアイアログ表示
                             string rs =
                                 string.Format("ReturnCode:{0} \r\n", resp.ReturnCode) +
@@ -602,10 +684,20 @@ namespace QBCodePay
                             // 返金確認API
                             reFoundC = new MakeJsons.ReFoundChk();
                             reFoundC = JsonConvert.DeserializeObject<MakeJsons.ReFoundChk>(g);
-                            // 結果コード移入
-                            rReturnCode = reFoundC.ReturnCode;
-                            // 処理結果コード移入
-                            rResultCode = reFoundC.Result.Result_code;
+                            // 結果JSON項目値を格納
+                            returns = new Returns();
+                            // 結果コード
+                            returns.rReturnCode = reFoundC.ReturnCode;
+                            // 処理結果コード
+                            returns.rResultCode = reFoundC.Result.Result_code;
+                            // 結果メッセージ
+                            returns.rReturnMessage = reFoundC.ReturnMessage;
+                            // 集計結果コード
+                            returns.rMsgSummaryCode = reFoundC.MsgSummaryCode;
+                            // 集計結果メッセージ
+                            returns.rMsgSummary = reFoundC.MsgSummary;
+
+                            // 確認のためアイアログ表示
                             string rs =
                                 string.Format("ReturnCode:{0}", reFoundC.ReturnCode) + "\r\n" +
                                 string.Format("ReturnMessage:{0}", reFoundC.ReturnMessage) + "\r\n" +
@@ -635,10 +727,19 @@ namespace QBCodePay
                             // 取引記録確認(店舗単位)API
                             storeView = new MakeJsons.StoreTradeView();
                             storeView = JsonConvert.DeserializeObject<MakeJsons.StoreTradeView>(g);
+                            // 結果JSON項目値を格納
+                            returns = new Returns();
                             // 結果コード移入
-                            rReturnCode = storeView.ReturnCode;
+                            returns.rReturnCode = storeView.ReturnCode;
                             // 処理結果コード移入(Result.result_codeは削除対象で基本null値が還るのでreturn_codeで代替えする)
-                            rResultCode = string.IsNullOrEmpty(storeView.Result.Result_code) ? storeView.Result.Return_code : storeView.Result.Result_code;
+                            returns.rResultCode = string.IsNullOrEmpty(storeView.Result.Result_code) ? storeView.Result.Return_code : storeView.Result.Result_code;
+                            // 結果メッセージ
+                            returns.rReturnMessage = storeView.ReturnMessage;
+                            // 集計結果コード
+                            returns.rMsgSummaryCode = storeView.MsgSummaryCode;
+                            // 集計結果メッセージ
+                            returns.rMsgSummary = storeView.MsgSummary;
+
                             string rs =
                                 string.Format("ReturnCode:{0}\r\n", storeView.ReturnCode) +
                                 string.Format("ReturnMessage:{0}\r\n", storeView.ReturnMessage) +
@@ -670,12 +771,12 @@ namespace QBCodePay
                             Console.WriteLine(rs);
                         }
                         // API正常
-                        if (rReturnCode == cReturnCode)
+                        if (returns.rReturnCode == cReturnCode)
                         {
                             // 支払または返金確認完了
-                            if((rResultCode == cResult_Code_S) || 
-                                (rResultCode == cResult_Code_SS) || 
-                                (rResultCode == cResult_Code_F))
+                            if((returns.rResultCode == cResult_Code_S) || 
+                                (returns.rResultCode == cResult_Code_SS) || 
+                                (returns.rResultCode == cResult_Code_F))
                             {
                                 rtn = true;
                                 string dMsg = string.Empty;
@@ -768,10 +869,19 @@ namespace QBCodePay
                             // Response Jsonデシリアライズ
                             userAuthR = new MakeJsons.UserAuthR();
                             userAuthR = JsonConvert.DeserializeObject<MakeJsons.UserAuthR>(g);
-                            // 結果コード移入
-                            rReturnCode = userAuthR.ReturnCode;
-                            // 処理結果コード移入(ユーザー認証リターンの場合はResultCodeが無いので「SUCCESS」を設定しておく)
-                            rResultCode = cResult_Code_SS;
+                            // 結果JSON項目値を格納
+                            returns = new Returns();
+                            // 結果コード
+                            returns.rReturnCode = userAuthR.ReturnCode;
+                            // 処理結果コード(ユーザー認証リターンの場合はResultCodeが無いので「SUCCESS」を設定しておく)
+                            returns.rResultCode = cResult_Code_SS;
+                            // 結果メッセージ
+                            returns.rReturnMessage = userAuthR.ReturnMessage;
+                            // 集計結果コード
+                            returns.rMsgSummaryCode = userAuthR.MsgSummaryCode;
+                            // 集計結果メッセージ
+                            returns.rMsgSummary = userAuthR.MsgSummary;
+
                             // 確認のためアイアログ表示
                             string authres =
                                 string.Format("ReturnCode:{0}", userAuthR.ReturnCode) + "\r\n" +
@@ -841,12 +951,10 @@ namespace QBCodePay
         private async Task<bool> PutApiFrmUrl(string s,string jdata = "",int mode = 0)
         {
             bool rtn = false;
-
             try
             {
                 // TLS1.2指定
                 ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-
                 // JSONデータ添付
                 HttpContent content = new StringContent(jdata,Encoding.UTF8,"application/json");
                 // HttpHeader編集
@@ -869,9 +977,11 @@ namespace QBCodePay
                 // HttpHeaderの生成・設定
                 AddHttpHeader2(ref client);
                 var res = await client.PutAsync(s, content);
-
                 if (res.StatusCode == HttpStatusCode.OK)
                 {
+                    /*
+                     * HttpMethod成功
+                     */
                     Console.WriteLine("PUT成功！");
                     var g = await res.Content.ReadAsStringAsync();
                     if (!string.IsNullOrEmpty(g))
@@ -881,10 +991,19 @@ namespace QBCodePay
                             //   支払API使用時
                             cpm = new MakeJsons.CpmRes();
                             cpm = JsonConvert.DeserializeObject<MakeJsons.CpmRes>(g);
-                            // 結果コード移入
-                            rReturnCode = cpm.ReturnCode;
-                            // 処理結果コード移入
-                            rResultCode = cpm.Result.Result_code;
+                            // 結果JSON項目値を格納
+                            returns = new Returns();
+                            // 結果コード
+                            returns.rReturnCode = cpm.ReturnCode;
+                            // 処理結果コード
+                            returns.rResultCode = cpm.Result.Result_code;
+                            // 結果メッセージ
+                            returns.rReturnMessage = cpm.ReturnMessage;
+                            // 集計結果コード
+                            returns.rMsgSummaryCode = cpm.MsgSummaryCode;
+                            // 集計結果メッセージ
+                            returns.rMsgSummary = cpm.MsgSummary;
+
                             // 確認のためアイアログ表示
                             string cpmres =
                                 string.Format("ReturnCode:{0}", cpm.ReturnCode) + "\r\n" +
@@ -913,10 +1032,19 @@ namespace QBCodePay
                             //   返金API使用時
                             reFoundR = new MakeJsons.ReFoundRes();
                             reFoundR = JsonConvert.DeserializeObject<MakeJsons.ReFoundRes>(g);
-                            // 結果コード移入
-                            rReturnCode = reFoundR.ReturnCode;
-                            // 処理結果コード移入
-                            rResultCode = reFoundR.Result.Result_code;
+                            // 結果JSON項目値を格納
+                            returns = new Returns();
+                            // 結果コード
+                            returns.rReturnCode = reFoundR.ReturnCode;
+                            // 処理結果コード
+                            returns.rResultCode = reFoundR.Result.Result_code;
+                            // 結果メッセージ
+                            returns.rReturnMessage = reFoundR.ReturnMessage;
+                            // 集計結果コード
+                            returns.rMsgSummaryCode = reFoundR.MsgSummaryCode;
+                            // 集計結果メッセージ
+                            returns.rMsgSummary = reFoundR.MsgSummary;
+
                             // 確認のためアイアログ表示
                             string cpmres =
                                 string.Format("ReturnCode:{0}", reFoundR.ReturnCode) + "\r\n" +
@@ -942,8 +1070,9 @@ namespace QBCodePay
 
                         }
                         // 処理正常でかつ支払完了時または返金確認完了時のみ支払確認または返金確認処理をさせない
-                        if ((rReturnCode == cReturnCode) && 
-                            ((rResultCode == cResult_Code_S) || (rResultCode == cResult_Code_SS) || (rResultCode == cResult_Code_F)))
+                        if ((returns.rReturnCode == cReturnCode) && 
+                            ((returns.rResultCode == cResult_Code_S) || (returns.rResultCode == cResult_Code_SS) || 
+                            (returns.rResultCode == cResult_Code_F)))
                         {
                             rtn = true;
                             if (mode == 0)

@@ -26,6 +26,8 @@ namespace QBCodePay
             public Urls urls;
             [JsonProperty("pollingTimeout")]
             public PollingTimeout pollingTimeout;
+            [JsonProperty("brands")]
+            public Brands[] BrandLst;
         }
         /// <summary>
         /// HOST,API URL群
@@ -111,7 +113,34 @@ namespace QBCodePay
             [JsonProperty("refundTimeOut")]
             public int RefundTimeOut;
         }
-
+        /// <summary>
+        /// 決済種別一覧
+        /// </summary>
+        [JsonObject("BrandList")]
+        public class Brands
+        {
+            /// <summary>
+            /// 決済種別ID
+            /// </summary>
+            [JsonProperty("id")]
+            public string Id;
+            /// <summary>
+            /// 決済種別コード
+            /// </summary>
+            [JsonProperty("kind")]
+            public string Kind;
+            /// <summary>
+            /// 決済種別名称
+            /// </summary>
+            [JsonProperty("name")]
+            public string Name;
+            /// <summary>
+            /// 部分返金可否
+            /// (2020年1月現在)
+            /// </summary>
+            [JsonProperty("partRefund")]
+            public bool PartRefund;
+        }
         #endregion
         #region "ユーザー認証送信用JSONフォーマット定義"
 
