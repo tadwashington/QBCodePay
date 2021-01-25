@@ -214,6 +214,10 @@ namespace QBCodePay
         /// 取引記録確認API (GET METHOD) レスポンスJSONクラスインスタンス
         /// </summary>
         MakeJsons.StoreTradeView storeView;
+        /// <summary>
+        /// エラー一覧JSONクラスインスタンス
+        /// </summary>
+        MakeJsons.ErrorList errorLst;
         #endregion
 
 
@@ -226,6 +230,12 @@ namespace QBCodePay
                 // JSONファイル読込失敗はプログラム終了
                 Application.Exit();
             };
+            // エラー一覧取得
+            if (!GetErrorList())
+            {
+                // JSONファイル読込失敗はプログラム終了
+                Application.Exit();
+            }
         }
         /// <summary>
         /// Configファイル(json)読込
@@ -300,6 +310,29 @@ namespace QBCodePay
                 Console.WriteLine("Config.jsonファイルの読込失敗:{0}",e.Message);
                 rtn = false;
             }
+            return rtn;
+        }
+        /// <summary>
+        /// エラー一覧取得
+        /// </summary>
+        /// <returns>true:成功、false:失敗</returns>
+        private bool GetErrorList()
+        {
+            bool rtn = true;
+
+            try
+            {
+                var pt = File.ReadAllText("./qbErros.json", Encoding.UTF8);
+                errorLst = new MakeJsons.ErrorList();
+                errorLst = JsonConvert.DeserializeObject<MakeJsons.ErrorList>(pt);
+
+            }
+            catch(Exception e)
+            {
+                Console.WriteLine("エラー一覧JSON取得に失敗しました。:{0}", e.Message);
+                rtn = false;
+            }
+
             return rtn;
         }
         /// <summary>
@@ -435,7 +468,9 @@ namespace QBCodePay
                             {
                                 if ((!string.IsNullOrEmpty(returns.rReturnCode)) && (returns.rReturnCode != cReturnCode))
                                 {
-                                    // エラー処理へ
+                                    // エラー処理
+                                    MessageBox.Show(string.Format("GETポーリング中にエラーが発生しています。MSG:{0}\r\n{1}\r\n{2}",
+                                        returns.rReturnMessage, returns.rMsgSummaryCode, returns.rMsgSummary), "GETポーリング処理でエラー");
                                     break;
                                 }
 
@@ -443,6 +478,24 @@ namespace QBCodePay
 
                         }
                     }
+                    else if ((rtn == true) && (returns.rReturnCode == cReturnCode) &&
+                             ((returns.rResultCode == cResult_Code_S) ||
+                                (returns.rResultCode == cResult_Code_SS) || 
+                                (returns.rResultCode == cResult_Code_F)))
+                    {
+                            // 決済成功
+                    }
+                    else
+                    {
+                        // エラー処理
+                        MessageBox.Show(string.Format("PUT取引でエラーが発生しています。MSG:{0}\r\n{1}\r\n{2}",
+                            returns.rReturnMessage, returns.rMsgSummaryCode, returns.rMsgSummary), "PUT処理でエラー");
+                    }
+                }
+                else
+                {
+                    MessageBox.Show(string.Format("PUT取引でエラーが発生しています。MSG:{0}\r\n{1}\r\n{2}",
+                        returns.rReturnMessage, returns.rMsgSummaryCode, returns.rMsgSummary), "PUT処理でエラー");
                 }
             }
             else
@@ -487,6 +540,7 @@ namespace QBCodePay
                         if ((returns.rReturnCode != cReturnCode))
                         {
                             // エラー処理へ
+                            Console.Write("GET METHODでエラーが還されました。ReturnCode:{0}", returns.rReturnCode);
                             break;
                         }
 
@@ -645,39 +699,59 @@ namespace QBCodePay
                             returns = new Returns();
                             // 結果コード
                             returns.rReturnCode = resp.ReturnCode;
-                            // 処理結果コード
-                            returns.rResultCode = resp.Result.Result_code;
-                            // 結果メッセージ
-                            returns.rReturnMessage = resp.ReturnMessage;
                             // 集計結果コード
                             returns.rMsgSummaryCode = resp.MsgSummaryCode;
                             // 集計結果メッセージ
                             returns.rMsgSummary = resp.MsgSummary;
+                            if (returns.rReturnCode == cReturnCode)
+                            {
+                                // 正常時
+                                // 処理結果コード
+                                returns.rResultCode = resp.Result.Result_code;
+                                // 結果メッセージ
+                                returns.rReturnMessage = resp.ReturnMessage;
 
-                            // 確認のためアイアログ表示
-                            string rs =
-                                string.Format("ReturnCode:{0} \r\n", resp.ReturnCode) +
-                                string.Format("ReturnMessage:{0}\r\n", resp.ReturnMessage) +
-                                string.Format("MsgSummaryCode:{0}\r\n", resp.MsgSummaryCode) +
-                                string.Format("MsgSummary:{0}\r\n", resp.MsgSummary) +
-                                string.Format("Result.partner_refund_id:{0}\r\n", resp.Result.partner_refund_id) +
-                                string.Format("Result.Currency:{0}\r\n", resp.Result.Currency) +
-                                string.Format("Result.Order_id:{0}\r\n", resp.Result.Order_id) +
-                                string.Format("Result.Return_code:{0}\r\n", resp.Result.Return_code) +
-                                string.Format("Result.Result_code:{0}\r\n", resp.Result.Result_code) +
-                                string.Format("Result.Real_fee:{0}\r\n", resp.Result.Real_fee) +
-                                string.Format("Result.Channel:{0}\r\n", resp.Result.Channel) +
-                                string.Format("Result.Create_time:{0}\r\n", resp.Result.Create_time) +
-                                string.Format("Result.Total_fee:{0}\r\n", resp.Result.Total_fee) +
-                                string.Format("Result.Pay_time:{0}\r\n", resp.Result.Pay_time) +
-                                string.Format("Result.Refund_fee:{0}\r\n", resp.Result.Refund_fee) +
-                                string.Format("Result.Order_body:{0}\r\n", resp.Result.Order_body) +
-                                string.Format("Result.Status:{0}\r\n", resp.Result.Status) +
-                                string.Format("Result.PartialRefundFlag:{0}\r\n", resp.Result.PartialRefundFlag) +
-                                string.Format("BalanceAmount:{0}\r\n", resp.BalanceAmount)
-                                ;
-                            //MessageBox.Show(rs, "帰ってきたパラメタ");
-                            Console.WriteLine(rs);
+                                // 確認のためアイアログ表示
+                                string rs =
+                                    string.Format("ReturnCode:{0} \r\n", resp.ReturnCode) +
+                                    string.Format("ReturnMessage:{0}\r\n", resp.ReturnMessage) +
+                                    string.Format("MsgSummaryCode:{0}\r\n", resp.MsgSummaryCode) +
+                                    string.Format("MsgSummary:{0}\r\n", resp.MsgSummary) +
+                                    string.Format("Result.partner_refund_id:{0}\r\n", resp.Result.partner_refund_id) +
+                                    string.Format("Result.Currency:{0}\r\n", resp.Result.Currency) +
+                                    string.Format("Result.Order_id:{0}\r\n", resp.Result.Order_id) +
+                                    string.Format("Result.Return_code:{0}\r\n", resp.Result.Return_code) +
+                                    string.Format("Result.Result_code:{0}\r\n", resp.Result.Result_code) +
+                                    string.Format("Result.Real_fee:{0}\r\n", resp.Result.Real_fee) +
+                                    string.Format("Result.Channel:{0}\r\n", resp.Result.Channel) +
+                                    string.Format("Result.Create_time:{0}\r\n", resp.Result.Create_time) +
+                                    string.Format("Result.Total_fee:{0}\r\n", resp.Result.Total_fee) +
+                                    string.Format("Result.Pay_time:{0}\r\n", resp.Result.Pay_time) +
+                                    string.Format("Result.Refund_fee:{0}\r\n", resp.Result.Refund_fee) +
+                                    string.Format("Result.Order_body:{0}\r\n", resp.Result.Order_body) +
+                                    string.Format("Result.Status:{0}\r\n", resp.Result.Status) +
+                                    string.Format("Result.PartialRefundFlag:{0}\r\n", resp.Result.PartialRefundFlag) +
+                                    string.Format("BalanceAmount:{0}\r\n", resp.BalanceAmount)
+                                    ;
+                                //MessageBox.Show(rs, "帰ってきたパラメタ");
+                                Console.WriteLine(rs);
+
+                            }
+                            else
+                            {
+                                // エラー時
+                                // 確認のためアイアログ表示
+                                string rs =
+                                    string.Format("ReturnCode:{0} \r\n", resp.ReturnCode) +
+                                    string.Format("ReturnMessage:{0}\r\n", resp.ReturnMessage) +
+                                    string.Format("MsgSummaryCode:{0}\r\n", resp.MsgSummaryCode) +
+                                    string.Format("MsgSummary:{0}\r\n", resp.MsgSummary) +
+                                    string.Format("BalanceAmount:{0}\r\n", resp.BalanceAmount)
+                                    ;
+                                //MessageBox.Show(rs, "帰ってきたパラメタ");
+                                Console.WriteLine(rs);
+
+                            }
                         }
                         else if (mode == 1)
                         {
@@ -688,8 +762,6 @@ namespace QBCodePay
                             returns = new Returns();
                             // 結果コード
                             returns.rReturnCode = reFoundC.ReturnCode;
-                            // 処理結果コード
-                            returns.rResultCode = reFoundC.Result.Result_code;
                             // 結果メッセージ
                             returns.rReturnMessage = reFoundC.ReturnMessage;
                             // 集計結果コード
@@ -697,30 +769,50 @@ namespace QBCodePay
                             // 集計結果メッセージ
                             returns.rMsgSummary = reFoundC.MsgSummary;
 
-                            // 確認のためアイアログ表示
-                            string rs =
-                                string.Format("ReturnCode:{0}", reFoundC.ReturnCode) + "\r\n" +
-                                string.Format("ReturnMessage:{0}", reFoundC.ReturnMessage) + "\r\n" +
-                                string.Format("MsgSummaryCode:{0}", reFoundC.MsgSummaryCode) + "\r\n" +
-                                string.Format("MsgSummary:{0}", reFoundC.MsgSummary) + "\r\n" +
-                                string.Format("Result.Partner_refund_id:{0}", reFoundC.Result.Partner_refund_id) + "\r\n" +
-                                string.Format("Result.Refund_id:{0}", reFoundC.Result.Refund_id) + "\r\n" +
-                                string.Format("Result.Currency:{0}", reFoundC.Result.Currency) + "\r\n" +
-                                string.Format("Result.Return_code:{0}", reFoundC.Result.Return_code) + "\r\n" +
-                                string.Format("Result.Result_code:{0}", reFoundC.Result.Result_code) + "\r\n" +
-                                string.Format("Result.Partner_order_id:{0}", reFoundC.Result.Partner_order_id) + "\r\n" +
-                                string.Format("Result.Total_fee:{0}", reFoundC.Result.Amount) + "\r\n" +
-                                string.Format("Result.Channel:{0}", reFoundC.Result.Channel) + "\r\n" +
-                                string.Format("Result.Order_id:{0}", reFoundC.Result.Order_id) + "\r\n" +
-                                string.Format("Result.Create_time:{0}", reFoundC.Result.Create_time) + "\r\n" +
-                                string.Format("Result.Pay_time:{0}", reFoundC.Result.Pay_time) + "\r\n" +
-                                string.Format("Result.Total_fee:{0}", reFoundC.Result.Total_fee) + "\r\n" +
-                                string.Format("Result.Real_fee:{0}", reFoundC.Result.Real_fee)
-                                ;
+                            if (returns.rReturnCode == cReturnCode)
+                            {
+                                // 正常時
+                                // 処理結果コード
+                                returns.rResultCode = reFoundC.Result.Result_code;
 
-                            Console.WriteLine(rs);
+                                // 確認のためアイアログ表示
+                                string rs =
+                                    string.Format("ReturnCode:{0}\r\n", reFoundC.ReturnCode) +
+                                    string.Format("ReturnMessage:{0}\r\n", reFoundC.ReturnMessage) +
+                                    string.Format("MsgSummaryCode:{0}\r\n", reFoundC.MsgSummaryCode) +
+                                    string.Format("MsgSummary:{0}\r\n", reFoundC.MsgSummary) +
+                                    string.Format("Result.Partner_refund_id:{0}\r\n", reFoundC.Result.Partner_refund_id) +
+                                    string.Format("Result.Refund_id:{0}\r\n", reFoundC.Result.Refund_id) +
+                                    string.Format("Result.Currency:{0}\r\n", reFoundC.Result.Currency) +
+                                    string.Format("Result.Return_code:{0}\r\n", reFoundC.Result.Return_code) +
+                                    string.Format("Result.Result_code:{0}\r\n", reFoundC.Result.Result_code) +
+                                    string.Format("Result.Partner_order_id:{0}\r\n", reFoundC.Result.Partner_order_id) +
+                                    string.Format("Result.Total_fee:{0}\r\n", reFoundC.Result.Amount) +
+                                    string.Format("Result.Channel:{0}\r\n", reFoundC.Result.Channel) +
+                                    string.Format("Result.Order_id:{0}\r\n", reFoundC.Result.Order_id) +
+                                    string.Format("Result.Create_time:{0}\r\n", reFoundC.Result.Create_time) +
+                                    string.Format("Result.Pay_time:{0}\r\n", reFoundC.Result.Pay_time) +
+                                    string.Format("Result.Total_fee:{0}\r\n", reFoundC.Result.Total_fee) +
+                                    string.Format("Result.Real_fee:{0}\r\n", reFoundC.Result.Real_fee)
+                                    ;
 
+                                Console.WriteLine(rs);
 
+                            }
+                            else
+                            {
+                                // エラー時
+                                // 確認のためアイアログ表示
+                                string rs =
+                                    string.Format("ReturnCode:{0}\r\n", reFoundC.ReturnCode) +
+                                    string.Format("ReturnMessage:{0}\r\n", reFoundC.ReturnMessage) +
+                                    string.Format("MsgSummaryCode:{0}\r\n", reFoundC.MsgSummaryCode) +
+                                    string.Format("MsgSummary:{0}\r\n", reFoundC.MsgSummary) 
+                                    ;
+
+                                Console.WriteLine(rs);
+
+                            }
                         }
                         else if(mode == 2)
                         {
@@ -731,44 +823,57 @@ namespace QBCodePay
                             returns = new Returns();
                             // 結果コード移入
                             returns.rReturnCode = storeView.ReturnCode;
-                            // 処理結果コード移入(Result.result_codeは削除対象で基本null値が還るのでreturn_codeで代替えする)
-                            returns.rResultCode = string.IsNullOrEmpty(storeView.Result.Result_code) ? storeView.Result.Return_code : storeView.Result.Result_code;
                             // 結果メッセージ
                             returns.rReturnMessage = storeView.ReturnMessage;
                             // 集計結果コード
                             returns.rMsgSummaryCode = storeView.MsgSummaryCode;
                             // 集計結果メッセージ
                             returns.rMsgSummary = storeView.MsgSummary;
-
-                            string rs =
-                                string.Format("ReturnCode:{0}\r\n", storeView.ReturnCode) +
-                                string.Format("ReturnMessage:{0}\r\n", storeView.ReturnMessage) +
-                                string.Format("MsgSummaryCode:{0}\r\n", storeView.MsgSummaryCode) +
-                                string.Format("MsgSummary:{0}\r\n", storeView.MsgSummary) +
-                                string.Format("Result.Return_code:{0}\r\n", storeView.Result.Return_code) +
-                                string.Format("Result.OrderDate:{0}\r\n", storeView.Result.OrderDate) +
-                                string.Format("Result.Result_code:{0}\r\n", storeView.Result.Result_code) +
-                                string.Format("Result.Transaction_count:{0}\r\n", storeView.Result.Transaction_count) +
-                                string.Format("*** 以下、明細行 *** \r\n");
-
-                            foreach (MakeJsons.StoreTradeViewLine line in storeView.Result.Data)
+                            if (returns.rReturnCode == cReturnCode)
                             {
-                                rs +=
-                                    string.Format("line.Record_type:{0}\r\n", line.Record_type) +
-                                    string.Format("line.Status:{0}\r\n", line.Status) +
-                                    string.Format("line.Partner_order_id:{0}\r\n", line.Partner_order_id) +
-                                    string.Format("line.Currency:{0}\r\n", line.Currency) +
-                                    string.Format("line.Create_time:{0}\r\n", line.Create_time) +
-                                    string.Format("line.Channel:{0}\r\n", line.Channel) +
-                                    string.Format("line.Real_fee:{0}\r\n", line.Real_fee) +
-                                    string.Format("line.Order_body:{0}\r\n", line.Order_body) +
-                                    string.Format("line.Order_id:{0}\r\n", line.Order_id) +
-                                    string.Format("line.Partner_refund_id:{0}\r\n", line.Partner_refund_id) +
-                                    string.Format("line.Refund_id:{0}\r\n", line.Refund_id) +
-                                    string.Format("line.Refund_fee:{0}\r\n", line.Refund_fee);
+                                // 処理結果コード移入(Result.result_codeは削除対象で基本null値が還るのでreturn_codeで代替えする)
+                                returns.rResultCode = string.IsNullOrEmpty(storeView.Result.Result_code) ? storeView.Result.Return_code : storeView.Result.Result_code;
+
+                                string rs =
+                                    string.Format("ReturnCode:{0}\r\n", storeView.ReturnCode) +
+                                    string.Format("ReturnMessage:{0}\r\n", storeView.ReturnMessage) +
+                                    string.Format("MsgSummaryCode:{0}\r\n", storeView.MsgSummaryCode) +
+                                    string.Format("MsgSummary:{0}\r\n", storeView.MsgSummary) +
+                                    string.Format("Result.Return_code:{0}\r\n", storeView.Result.Return_code) +
+                                    string.Format("Result.OrderDate:{0}\r\n", storeView.Result.OrderDate) +
+                                    string.Format("Result.Result_code:{0}\r\n", storeView.Result.Result_code) +
+                                    string.Format("Result.Transaction_count:{0}\r\n", storeView.Result.Transaction_count) +
+                                    string.Format("*** 以下、明細行 *** \r\n");
+
+                                foreach (MakeJsons.StoreTradeViewLine line in storeView.Result.Data)
+                                {
+                                    rs +=
+                                        string.Format("line.Record_type:{0}\r\n", line.Record_type) +
+                                        string.Format("line.Status:{0}\r\n", line.Status) +
+                                        string.Format("line.Partner_order_id:{0}\r\n", line.Partner_order_id) +
+                                        string.Format("line.Currency:{0}\r\n", line.Currency) +
+                                        string.Format("line.Create_time:{0}\r\n", line.Create_time) +
+                                        string.Format("line.Channel:{0}\r\n", line.Channel) +
+                                        string.Format("line.Real_fee:{0}\r\n", line.Real_fee) +
+                                        string.Format("line.Order_body:{0}\r\n", line.Order_body) +
+                                        string.Format("line.Order_id:{0}\r\n", line.Order_id) +
+                                        string.Format("line.Partner_refund_id:{0}\r\n", line.Partner_refund_id) +
+                                        string.Format("line.Refund_id:{0}\r\n", line.Refund_id) +
+                                        string.Format("line.Refund_fee:{0}\r\n", line.Refund_fee);
+                                }
+                                rs += "*** END ***";
+                                Console.WriteLine(rs);
                             }
-                            rs += "*** END ***";
-                            Console.WriteLine(rs);
+                            else
+                            {
+                                string rs =
+                                    string.Format("ReturnCode:{0}\r\n", storeView.ReturnCode) +
+                                    string.Format("ReturnMessage:{0}\r\n", storeView.ReturnMessage) +
+                                    string.Format("MsgSummaryCode:{0}\r\n", storeView.MsgSummaryCode) +
+                                    string.Format("MsgSummary:{0}\r\n", storeView.MsgSummary) 
+                                    ;
+                                Console.WriteLine(rs);
+                            }
                         }
                         // API正常
                         if (returns.rReturnCode == cReturnCode)
@@ -799,6 +904,11 @@ namespace QBCodePay
                                 }
                                 MessageBox.Show(dMsg, dTtl);
                             }
+                        }
+                        else
+                        {
+                            // エラー発生時
+                            rtn = false;
                         }
                     }
                 }
@@ -995,37 +1105,56 @@ namespace QBCodePay
                             returns = new Returns();
                             // 結果コード
                             returns.rReturnCode = cpm.ReturnCode;
-                            // 処理結果コード
-                            returns.rResultCode = cpm.Result.Result_code;
-                            // 結果メッセージ
-                            returns.rReturnMessage = cpm.ReturnMessage;
                             // 集計結果コード
                             returns.rMsgSummaryCode = cpm.MsgSummaryCode;
                             // 集計結果メッセージ
                             returns.rMsgSummary = cpm.MsgSummary;
+                            // 結果メッセージ
+                            returns.rReturnMessage = cpm.ReturnMessage;
+                            if (returns.rReturnCode == cReturnCode)
+                            {
+                                /*
+                                 * 正常
+                                 */
+                                // 処理結果コード
+                                returns.rResultCode = cpm.Result.Result_code;
+                                // 確認のためアイアログ表示
+                                string cpmres =
+                                    string.Format("ReturnCode:{0}", cpm.ReturnCode) + "\r\n" +
+                                    string.Format("ReturnMessage:{0}", cpm.ReturnMessage) + "\r\n" +
+                                    string.Format("MsgSummaryCode:{0}", cpm.MsgSummaryCode) + "\r\n" +
+                                    string.Format("MsgSummary:{0}", cpm.MsgSummary) + "\r\n" +
+                                    string.Format("Result.Partner_order_id:{0}", cpm.Result.Partner_order_id) + "\r\n" +
+                                    string.Format("Result.Currency:{0}", cpm.Result.Currency) + "\r\n" +
+                                    string.Format("Result.Order_id:{0}", cpm.Result.Order_id) + "\r\n" +
+                                    string.Format("Result.Return_code:{0}", cpm.Result.Return_code) + "\r\n" +
+                                    string.Format("Result.Result_code:{0}", cpm.Result.Result_code) + "\r\n" +
+                                    string.Format("Result.Create_time:{0}", cpm.Result.Create_time) + "\r\n" +
+                                    string.Format("Result.Total_fee:{0}", cpm.Result.Total_fee.ToString()) + "\r\n" +
+                                    string.Format("Result.Real_fee:{0}", cpm.Result.Real_fee.ToString()) + "\r\n" +
+                                    string.Format("Result.Channel:{0}", cpm.Result.Channel) + "\r\n" +
+                                    string.Format("Result.Pay_time:{0}", cpm.Result.Pay_time) + "\r\n" +
+                                    string.Format("Result.Order_body:{0}", cpm.Result.Order_body) + "\r\n" +
+                                    string.Format("BalanceAmount:{0}", cpm.BalanceAmount)
+                                    ;
 
-                            // 確認のためアイアログ表示
-                            string cpmres =
-                                string.Format("ReturnCode:{0}", cpm.ReturnCode) + "\r\n" +
-                                string.Format("ReturnMessage:{0}", cpm.ReturnMessage) + "\r\n" +
-                                string.Format("MsgSummaryCode:{0}", cpm.MsgSummaryCode) + "\r\n" +
-                                string.Format("MsgSummary:{0}", cpm.MsgSummary) + "\r\n" +
-                                string.Format("Result.Partner_order_id:{0}", cpm.Result.Partner_order_id) + "\r\n" +
-                                string.Format("Result.Currency:{0}", cpm.Result.Currency) + "\r\n" +
-                                string.Format("Result.Order_id:{0}", cpm.Result.Order_id) + "\r\n" +
-                                string.Format("Result.Return_code:{0}", cpm.Result.Return_code) + "\r\n" +
-                                string.Format("Result.Result_code:{0}", cpm.Result.Result_code) + "\r\n" +
-                                string.Format("Result.Create_time:{0}", cpm.Result.Create_time) + "\r\n" +
-                                string.Format("Result.Total_fee:{0}", cpm.Result.Total_fee.ToString()) + "\r\n" +
-                                string.Format("Result.Real_fee:{0}", cpm.Result.Real_fee.ToString()) + "\r\n" +
-                                string.Format("Result.Channel:{0}", cpm.Result.Channel) + "\r\n" +
-                                string.Format("Result.Pay_time:{0}", cpm.Result.Pay_time) + "\r\n" +
-                                string.Format("Result.Order_body:{0}", cpm.Result.Order_body) + "\r\n" +
-                                string.Format("BalanceAmount:{0}", cpm.BalanceAmount)
-                                ;
-
-                            Console.WriteLine(cpmres, "帰ってきたjsonパラメタ");
-
+                                Console.WriteLine(cpmres, "帰ってきたjsonパラメタ");
+                            }
+                            else
+                            {
+                                // エラー
+                                // 確認のためアイアログ表示
+                                string cpmres =
+                                    string.Format("ReturnCode:{0}", cpm.ReturnCode) + "\r\n" +
+                                    string.Format("ReturnMessage:{0}", cpm.ReturnMessage) + "\r\n" +
+                                    string.Format("MsgSummaryCode:{0}", cpm.MsgSummaryCode) + "\r\n" +
+                                    string.Format("MsgSummary:{0}", cpm.MsgSummary) + "\r\n" +
+                                    string.Format("BalanceAmount:{0}", cpm.BalanceAmount)
+                                    ;
+                                // falseを設定
+                                rtn = false;
+                                Console.WriteLine(cpmres, "帰ってきたjsonパラメタ");
+                            }
                         }
                         else if (mode == 1)
                         {
@@ -1319,6 +1448,19 @@ namespace QBCodePay
             // 支払確認API実行
             return await GetApiFrmUrl(pUrl,mode);
             
+        }
+        /// <summary>
+        /// エラー(集約結果)コードからエラーレベルを取得する
+        /// </summary>
+        /// <param name="code">エラー(集約結果)コード</param>
+        /// <returns></returns>
+        private string GetErrorLevel(string code)
+        {
+            string ret = string.Empty;
+
+
+
+            return ret;
         }
 
     }

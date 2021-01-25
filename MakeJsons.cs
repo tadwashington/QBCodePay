@@ -142,6 +142,31 @@ namespace QBCodePay
             public bool PartRefund;
         }
         #endregion
+        #region "エラー一覧JSON定義"        
+        /// <summary>
+        /// エラー一覧
+        /// </summary>
+        [JsonObject("errorList")]
+        public class ErrorList
+        {
+            [JsonProperty("errors")]
+            public ErrorItems[] Items;
+        }
+        /// <summary>
+        /// エラー一覧行データ
+        /// </summary>
+        [JsonObject("errorItems")]
+        public class ErrorItems
+        {
+            [JsonProperty("code")]
+            public string Code;
+            [JsonProperty("message")]
+            public string Message;
+            [JsonProperty("level")]
+            public string Level;
+        }
+        #endregion
+
         #region "ユーザー認証送信用JSONフォーマット定義"
 
         /// <summary>
