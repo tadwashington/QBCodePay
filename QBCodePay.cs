@@ -54,6 +54,14 @@ namespace QBCodePay
         /// 以外は異常と判定する
         /// </summary>
         private const string cReturnCode = "MP10000";
+        /// <summary>
+        /// エラーレベル１:キャンセル扱い(再実行が可能-->決済選択画面に戻る)
+        /// </summary>
+        private const string cErrorLv1 = "1";
+        /// <summary>
+        /// エラーレベル９:システムエラー扱い(再実行不可-->スタッフ呼出対象)
+        /// </summary>
+        private const string cErrorLv9 = "9";
         #endregion
 
         #region "プロパティ群"
@@ -217,7 +225,7 @@ namespace QBCodePay
         /// <summary>
         /// エラー一覧JSONクラスインスタンス
         /// </summary>
-        MakeJsons.ErrorList errorLst;
+        MakeJsons.ErrosLst errorLst;
         #endregion
 
 
@@ -246,7 +254,7 @@ namespace QBCodePay
             bool rtn = false;
             try
             {
-                var pt =  File.ReadAllText("./Config.json",Encoding.UTF8);
+                var pt =  File.ReadAllText(@"./Config.json",Encoding.UTF8);
                 MakeJsons.Configure jsn = new MakeJsons.Configure();
                 jsn = JsonConvert.DeserializeObject<MakeJsons.Configure>(pt);
                 /*
@@ -322,15 +330,48 @@ namespace QBCodePay
 
             try
             {
-                var pt = File.ReadAllText("./qbErros.json", Encoding.UTF8);
-                errorLst = new MakeJsons.ErrorList();
-                errorLst = JsonConvert.DeserializeObject<MakeJsons.ErrorList>(pt);
+                // qbErros.jsonをTEXTで読込
+                var pt = File.ReadAllText(@"./qbErros.json", Encoding.UTF8);
+                // Json形式にDeserialize
+                errorLst = new MakeJsons.ErrosLst();
+                errorLst = JsonConvert.DeserializeObject<MakeJsons.ErrosLst>(pt);
 
             }
             catch(Exception e)
             {
                 Console.WriteLine("エラー一覧JSON取得に失敗しました。:{0}", e.Message);
                 rtn = false;
+            }
+
+            return rtn;
+        }
+        /// <summary>
+        /// Httpレスポンス(JSON)の集約結果コードから
+        /// エラーレベルを取得する
+        /// </summary>
+        /// <param name="code">集約結果コード</param>
+        /// <returns></returns>
+        private string GetErrorLevel(string code)
+        {
+            string rtn = string.Empty;
+
+            try
+            {
+                var line = from c in errorLst.Items where c.Code.Contains(code) select c;
+
+                foreach (MakeJsons.ErrorItems ln in line)
+                {
+                    rtn = ln.Level;
+                }
+                // エラー一覧に該当なしの場合はシステムエラー同等とする
+                if (rtn.Trim().Length <= 0)
+                {
+                    rtn = cErrorLv9;
+                }
+            }
+            catch(Exception e)
+            {
+                Console.WriteLine("エラーレベル取得に失敗しました。:{0}",e.Message);
             }
 
             return rtn;
@@ -442,7 +483,13 @@ namespace QBCodePay
             {
                 // Put Method Request送信(jdata:JSONフォーマット)
                 bool rtn = await PutApiFrmUrl(pUrl, jdata, mode);
-                // メソッドリターンがfalseでAPI処理が正常の場合は支払確認処理をPAULING
+                /*
+                 * メソッドリターンがfalseでAPI処理が正常の場合でかつ
+                 * 結果詳細の処理結果コードが
+                 * 「PAYING」(支払待ち)
+                 * 「WAITING」(返金確認待ち)
+                 * は支払確認処理をPAULING
+                 */
                 if ((!string.IsNullOrEmpty(returns.rReturnCode)) && (!string.IsNullOrEmpty(returns.rResultCode)))
                 {
                     if ((rtn == false) && (returns.rReturnCode == cReturnCode) &&
@@ -463,14 +510,20 @@ namespace QBCodePay
                                     // 支払完了
                                     break;
                                 }
+                                /*
+                                 * GetPaulingメソッドの戻り値=trueで上記条件以外は「支払確認待ち」あるいは「返金待ち」なので
+                                 * そのままスルーさせる
+                                 */
                             }
                             else
                             {
                                 if ((!string.IsNullOrEmpty(returns.rReturnCode)) && (returns.rReturnCode != cReturnCode))
                                 {
                                     // エラー処理
-                                    MessageBox.Show(string.Format("GETポーリング中にエラーが発生しています。MSG:{0}\r\n{1}\r\n{2}",
-                                        returns.rReturnMessage, returns.rMsgSummaryCode, returns.rMsgSummary), "GETポーリング処理でエラー");
+                                    var Lv = GetErrorLevel(returns.rMsgSummaryCode);
+
+                                    MessageBox.Show(string.Format("GETポーリング中にエラーが発生しています。\r\nErrorLevel:{3} \r\nMSG:{0}\r\n{1}\r\n{2}",
+                                        returns.rReturnMessage, returns.rMsgSummaryCode, returns.rMsgSummary,Lv), "GETポーリング処理でエラー");
                                     break;
                                 }
 
@@ -488,14 +541,19 @@ namespace QBCodePay
                     else
                     {
                         // エラー処理
-                        MessageBox.Show(string.Format("PUT取引でエラーが発生しています。MSG:{0}\r\n{1}\r\n{2}",
-                            returns.rReturnMessage, returns.rMsgSummaryCode, returns.rMsgSummary), "PUT処理でエラー");
+                        var Lv = GetErrorLevel(returns.rMsgSummaryCode);
+
+                        MessageBox.Show(string.Format("PUT METHODでエラーが発生しています。\r\nErrorLevel:{3} \r\nMSG:{0}\r\n{1}\r\n{2}",
+                            returns.rReturnMessage, returns.rMsgSummaryCode, returns.rMsgSummary, Lv), "PUT METHODでエラー");
                     }
                 }
                 else
                 {
-                    MessageBox.Show(string.Format("PUT取引でエラーが発生しています。MSG:{0}\r\n{1}\r\n{2}",
-                        returns.rReturnMessage, returns.rMsgSummaryCode, returns.rMsgSummary), "PUT処理でエラー");
+                    // エラー処理
+                    var Lv = GetErrorLevel(returns.rMsgSummaryCode);
+
+                    MessageBox.Show(string.Format("PUT METHODでエラーが発生しています。\r\nErrorLevel:{3} \r\nMSG:{0}\r\n{1}\r\n{2}",
+                        returns.rReturnMessage, returns.rMsgSummaryCode, returns.rMsgSummary, Lv), "PUT METHODでエラー");
                 }
             }
             else
@@ -512,42 +570,8 @@ namespace QBCodePay
             {
                 return;
             }
+            // GET METHOD 実行
             bool rtn = await GetApiFrmUrl(pUrl,mode);
-            /* 
-             * APIレスポンスのReturn_Codeが"MP10000(処理正常)"でかつメソッドリターンがfalseの場合は 
-             * 支払待ちと判定し支払確認(GET METHOD)のPaulingを行う
-             */
-            if ((returns.rReturnCode == cReturnCode) && (rtn = false))
-            {
-                while (true)
-                {
-                    // GET METHOD PAULING
-                    if (await GetPauling() == true)
-                    {
-                        // 処理正常でかつ支払完了ならPAULING終了
-                        if ((returns.rResultCode == cReturnCode) && 
-                            ((returns.rResultCode == cResult_Code_S) || 
-                            (returns.rResultCode == cResult_Code_SS) ||
-                            (returns.rResultCode == cResult_Code_F))
-                            )
-                        {
-                            // 支払完了
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        if ((returns.rReturnCode != cReturnCode))
-                        {
-                            // エラー処理へ
-                            Console.Write("GET METHODでエラーが還されました。ReturnCode:{0}", returns.rReturnCode);
-                            break;
-                        }
-
-                    }
-                }
-            }
-
         }
         /// <summary>
         /// PUT METHOD
@@ -574,7 +598,11 @@ namespace QBCodePay
                 }
                 else
                 {
-                    throw new Exception();
+                    var Lv = GetErrorLevel(returns.rMsgSummaryCode);
+
+                    MessageBox.Show(
+                        string.Format("POST METHODでエラー発生 \r\n 集計結果コード:{0}\r\n 集計結果メッセージ:{1}\r\n ERROR LEVEL:{2}", 
+                        returns.rMsgSummaryCode,returns.rMsgSummary,Lv));
                 }
             }
             catch(Exception e)
@@ -680,7 +708,9 @@ namespace QBCodePay
                     };
                     s += "?" + await new FormUrlEncodedContent(prms).ReadAsStringAsync();
                 }
+                // Httpヘッダー記述を追加
                 AddHttpHeader2(ref client);
+                // Get Method
                 var res = await client.GetAsync(s);
 
                 if (res.StatusCode == HttpStatusCode.OK)
@@ -926,10 +956,9 @@ namespace QBCodePay
             }
             catch (Exception e)
             {
-                Console.WriteLine(string.Format("あかんやん！: {0}", e.Message));
-                Console.WriteLine(string.Format("なんでやねん！: {0}", e.InnerException));
-                MessageBox.Show(string.Format("Exceptionが発生しましたよ。:\r\n{0} \r\ninner Ex:\r\n{1}", e.Message, e.InnerException),
-                    "残念ながらGETに失敗してます。");
+                Console.WriteLine(string.Format("GET リクエスト発行時にExceptionが発生しました。\r\n Message:\r\n{0} \r\ninner Ex:\r\n{1}",
+                    e.Message, e.InnerException));
+                rtn = false;
             }
 
             return rtn;
@@ -983,63 +1012,77 @@ namespace QBCodePay
                             returns = new Returns();
                             // 結果コード
                             returns.rReturnCode = userAuthR.ReturnCode;
-                            // 処理結果コード(ユーザー認証リターンの場合はResultCodeが無いので「SUCCESS」を設定しておく)
-                            returns.rResultCode = cResult_Code_SS;
-                            // 結果メッセージ
-                            returns.rReturnMessage = userAuthR.ReturnMessage;
                             // 集計結果コード
                             returns.rMsgSummaryCode = userAuthR.MsgSummaryCode;
                             // 集計結果メッセージ
                             returns.rMsgSummary = userAuthR.MsgSummary;
-
-                            // 確認のためアイアログ表示
-                            string authres =
-                                string.Format("ReturnCode:{0}", userAuthR.ReturnCode) + "\r\n" +
-                                string.Format("ReturnMessage:{0}", userAuthR.ReturnMessage) + "\r\n" +
-                                string.Format("MsgSummaryCode:{0}", userAuthR.MsgSummaryCode) + "\r\n" +
-                                string.Format("MsgSummary:{0}", userAuthR.MsgSummary) + "\r\n" +
-                                string.Format("Result.CredentialKey:{0}", userAuthR.Result.CredentialKey) + "\r\n" +
-                                string.Format("Result.PartnerFullName:{0}", userAuthR.Result.PartnerFullName) + "\r\n" +
-                                string.Format("Result.Description:{0}", userAuthR.Result.Description) + "\r\n" +
-                                string.Format("Result.AdminPassword:{0}", userAuthR.Result.AdminPassword) + "\r\n" +
-                                string.Format("Result.AuthForRefund:{0}", userAuthR.Result.AuthForRefund.ToString()) + "\r\n" +
-                                string.Format("Result.CashNumber:{0}", userAuthR.Result.CashNumber) + "\r\n" +
-
-                                string.Format("Result.WarningWord:{0}", userAuthR.Result.WarningWord) + "\r\n" +
-                                string.Format("Result.CheckSnFlag:{0}", userAuthR.Result.CheckSnFlag.ToString()) + "\r\n" +
-                                string.Format("Result.MerchantFullName:{0}", userAuthR.Result.MerchantFullName) + "\r\n" +
-                                string.Format("Result.MerchantName:{0}", userAuthR.Result.MerchantName) + "\r\n" +
-                                string.Format("Result.MerchantKanaName:{0}", userAuthR.Result.MerchantKanaName) + "\r\n" +
-                                string.Format("Result.Prefectures:{0}", userAuthR.Result.Prefectures) + "\r\n" +
-                                string.Format("Result.City:{0}", userAuthR.Result.City) + "\r\n" +
-                                string.Format("Result.Street:{0}", userAuthR.Result.Street) + "\r\n" +
-                                string.Format("Result.Address:{0}", userAuthR.Result.Address) + "\r\n" +
-                                string.Format("Result.ContactPhoneNum:{0}", userAuthR.Result.ContactPhoneNum) + "\r\n" +
-                                string.Format("Result.Email:{0}", userAuthR.Result.Email) + "\r\n" +
-                                string.Format("Result.ContactHomeUrl:{0}", userAuthR.Result.ContactHomeUrl) + "\r\n" +
-                                string.Format("Result.QrProvisionMethod:{0}", userAuthR.Result.QrProvisionMethod) + "\r\n" +
-                                string.Format("Result.MerchantId:{0}", userAuthR.Result.MerchantId.ToString()) + "\r\n" +
-                                string.Format("Result.PwChangedFlag:{0}", userAuthR.Result.PwChangedFlag.ToString()) + "\r\n" +
-                                string.Format("Result.PayTypeList:{0}", "下記に記載") + "\r\n" +
-                                string.Format("BalanceAmount:{0}\r\n", userAuthR.BalanceAmount) +
-                                string.Format("=== PayTypeList === \r\n");
-
-                            foreach (MakeJsons.PayList list in userAuthR.Result.PayTypeList)
+                            // 結果メッセージ
+                            returns.rReturnMessage = userAuthR.ReturnMessage;
+                            // 正常処理時
+                            if (returns.rResultCode == cReturnCode)
                             {
-                                authres +=
-                                    string.Format("list.PayTypeId:{0} \r\n", list.PayTypeId.ToString()) +
-                                    string.Format("list.PayTypeCode:{0} \r\n", list.PayTypeCode) +
-                                    string.Format("list.PayTypeName:{0} \r\n", list.PayTypeName) +
-                                    string.Format("list.QrcodeRegExr:{0} \r\n", list.QrcodeRegExr) +
-                                    string.Format("list.DispQrcodeFlag:{0} \r\n", list.DispQrcodeFlag.ToString()) +
-                                    string.Format("list.ReadQrcodeFlag:{0} \r\n", list.ReadQrcodeFlag.ToString());
+                                // 処理結果コード(ユーザー認証リターンの場合はResultCodeが無いので「SUCCESS」を設定しておく)
+                                returns.rResultCode = cResult_Code_SS;
+
+                                // 確認のためアイアログ表示
+                                string authres =
+                                    string.Format("ReturnCode:{0}", userAuthR.ReturnCode) + "\r\n" +
+                                    string.Format("ReturnMessage:{0}", userAuthR.ReturnMessage) + "\r\n" +
+                                    string.Format("MsgSummaryCode:{0}", userAuthR.MsgSummaryCode) + "\r\n" +
+                                    string.Format("MsgSummary:{0}", userAuthR.MsgSummary) + "\r\n" +
+                                    string.Format("Result.CredentialKey:{0}", userAuthR.Result.CredentialKey) + "\r\n" +
+                                    string.Format("Result.PartnerFullName:{0}", userAuthR.Result.PartnerFullName) + "\r\n" +
+                                    string.Format("Result.Description:{0}", userAuthR.Result.Description) + "\r\n" +
+                                    string.Format("Result.AdminPassword:{0}", userAuthR.Result.AdminPassword) + "\r\n" +
+                                    string.Format("Result.AuthForRefund:{0}", userAuthR.Result.AuthForRefund.ToString()) + "\r\n" +
+                                    string.Format("Result.CashNumber:{0}", userAuthR.Result.CashNumber) + "\r\n" +
+
+                                    string.Format("Result.WarningWord:{0}", userAuthR.Result.WarningWord) + "\r\n" +
+                                    string.Format("Result.CheckSnFlag:{0}", userAuthR.Result.CheckSnFlag.ToString()) + "\r\n" +
+                                    string.Format("Result.MerchantFullName:{0}", userAuthR.Result.MerchantFullName) + "\r\n" +
+                                    string.Format("Result.MerchantName:{0}", userAuthR.Result.MerchantName) + "\r\n" +
+                                    string.Format("Result.MerchantKanaName:{0}", userAuthR.Result.MerchantKanaName) + "\r\n" +
+                                    string.Format("Result.Prefectures:{0}", userAuthR.Result.Prefectures) + "\r\n" +
+                                    string.Format("Result.City:{0}", userAuthR.Result.City) + "\r\n" +
+                                    string.Format("Result.Street:{0}", userAuthR.Result.Street) + "\r\n" +
+                                    string.Format("Result.Address:{0}", userAuthR.Result.Address) + "\r\n" +
+                                    string.Format("Result.ContactPhoneNum:{0}", userAuthR.Result.ContactPhoneNum) + "\r\n" +
+                                    string.Format("Result.Email:{0}", userAuthR.Result.Email) + "\r\n" +
+                                    string.Format("Result.ContactHomeUrl:{0}", userAuthR.Result.ContactHomeUrl) + "\r\n" +
+                                    string.Format("Result.QrProvisionMethod:{0}", userAuthR.Result.QrProvisionMethod) + "\r\n" +
+                                    string.Format("Result.MerchantId:{0}", userAuthR.Result.MerchantId.ToString()) + "\r\n" +
+                                    string.Format("Result.PwChangedFlag:{0}", userAuthR.Result.PwChangedFlag.ToString()) + "\r\n" +
+                                    string.Format("Result.PayTypeList:{0}", "下記に記載") + "\r\n" +
+                                    string.Format("BalanceAmount:{0}\r\n", userAuthR.BalanceAmount) +
+                                    string.Format("=== PayTypeList === \r\n");
+
+                                foreach (MakeJsons.PayList list in userAuthR.Result.PayTypeList)
+                                {
+                                    authres +=
+                                        string.Format("list.PayTypeId:{0} \r\n", list.PayTypeId.ToString()) +
+                                        string.Format("list.PayTypeCode:{0} \r\n", list.PayTypeCode) +
+                                        string.Format("list.PayTypeName:{0} \r\n", list.PayTypeName) +
+                                        string.Format("list.QrcodeRegExr:{0} \r\n", list.QrcodeRegExr) +
+                                        string.Format("list.DispQrcodeFlag:{0} \r\n", list.DispQrcodeFlag.ToString()) +
+                                        string.Format("list.ReadQrcodeFlag:{0} \r\n", list.ReadQrcodeFlag.ToString());
+                                }
+
+                                Console.WriteLine(authres, "帰ってきたjsonパラメタ");
+                                rtn = true;
                             }
-
-                            Console.WriteLine(authres, "帰ってきたjsonパラメタ");
-
+                            else
+                            {
+                                // エラー発生時
+                            }
                         }
-                        rtn = true;
-
+                        else if (mode == 1)
+                        {
+                            // 取引記録照会(企業単位)
+                            /*
+                             * 企業単位の取引記録を店舗で出力・利用することは無いのでスルーさせる
+                             */
+                            
+                        }
                     }
                 }
             }
@@ -1449,20 +1492,6 @@ namespace QBCodePay
             return await GetApiFrmUrl(pUrl,mode);
             
         }
-        /// <summary>
-        /// エラー(集約結果)コードからエラーレベルを取得する
-        /// </summary>
-        /// <param name="code">エラー(集約結果)コード</param>
-        /// <returns></returns>
-        private string GetErrorLevel(string code)
-        {
-            string ret = string.Empty;
-
-
-
-            return ret;
-        }
-
     }
 
 }

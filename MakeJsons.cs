@@ -146,10 +146,10 @@ namespace QBCodePay
         /// <summary>
         /// エラー一覧
         /// </summary>
-        [JsonObject("errorList")]
-        public class ErrorList
+        [JsonObject("errorsLst")]
+        public class ErrosLst
         {
-            [JsonProperty("errors")]
+            [JsonProperty("erros")]
             public ErrorItems[] Items;
         }
         /// <summary>
@@ -1699,18 +1699,6 @@ namespace QBCodePay
             [JsonProperty("payAmount")]
             public string PayAmount;
         }
-        #endregion
-
-        #region "JSON編集メソッド"
-        /// <summary>
-        /// QRコード支払(CPM)API PUTリクエストJSON編集
-        /// </summary>
-        /// <param name="cpm"></param>
-        public void EditPutCPM(ref CpmReq cpm)
-        {
-
-        }
-
         #endregion
     }
     #endregion
