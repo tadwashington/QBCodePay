@@ -24,6 +24,8 @@ namespace QBCodePay
         {
             [JsonProperty("urLs")]
             public Urls urls;
+            [JsonProperty("httpheaders")]
+            public HttpHeaders[] Headers;
             [JsonProperty("pollingTimeout")]
             public PollingTimeout pollingTimeout;
             [JsonProperty("brands")]
@@ -90,6 +92,21 @@ namespace QBCodePay
             /// </summary>
             [JsonProperty("accessPort")]
             public int AccessPort;
+        }
+        /// <summary>
+        /// HttpHeaderフィールド名
+        /// </summary>
+        [JsonObject("httpheaders")]
+        public class HttpHeaders
+        {
+            /// <summary>
+            /// 順位
+            /// </summary>
+            public int No;
+            /// <summary>
+            /// フィールド名(ID)
+            /// </summary>
+            public string FieldName;
         }
         /// <summary>
         /// 各APIリクエストのポーリング間隔およびタイムアウト

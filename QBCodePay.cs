@@ -127,6 +127,18 @@ namespace QBCodePay
         /// </summary>
         public string pVerifHostUrl { get; set; }
         /// <summary>
+        /// HttpHeaderフィールド名 List
+        /// </summary>
+        public List<HttpHeader> pHeaders;
+        /// <summary>
+        /// HttpHeaderフィールド名構造体
+        /// </summary>
+        public struct HttpHeader
+        {
+            public int No { get; set; }
+            public string Name { get; set; }
+        }
+        /// <summary>
         /// GET METHOD Pauling間隔(ミリ秒)
         /// </summary>
         public int pGetPollTime { get; set; }
@@ -177,24 +189,24 @@ namespace QBCodePay
         /// <summary>
         /// 決済種別一覧行クラス
         /// </summary>
-        public class PaymentType
+        public struct PaymentType
         {
             /// <summary>
             /// 決済種別ID
             /// </summary>
-            public string PayId;
+            public string PayId { get; set; }
             /// <summary>
             /// 決済種別コード
             /// </summary>
-            public string PayKind;
+            public string PayKind { get; set; }
             /// <summary>
             /// 決済種別名称
             /// </summary>
-            public string PayName;
+            public string PayName { get; set; }
             /// <summary>
             /// 部分返金可否フラグ(true:OK、false:NG)
             /// </summary>
-            public bool PayPartRefund;
+            public bool PayPartRefund { get; set; }
         }
         #endregion
         #region "インスタンス群"
@@ -233,7 +245,7 @@ namespace QBCodePay
         {
             InitializeComponent();
             // Config JSONファイルを読込(環境定義)
-            if (!ReadConfigJson())
+            if (!GetConfigJson())
             {
                 // JSONファイル読込失敗はプログラム終了
                 Application.Exit();
@@ -249,7 +261,7 @@ namespace QBCodePay
         /// Configファイル(json)読込
         /// </summary>
         /// <returns></returns>
-        private bool ReadConfigJson()
+        private bool GetConfigJson()
         {
             bool rtn = false;
             try
@@ -294,6 +306,17 @@ namespace QBCodePay
                 pCPMTimeOut = jsn.pollingTimeout.CpmTimeOut;
                 // 返金処理タイムアウト値
                 pRefundTimeOut = jsn.pollingTimeout.RefundTimeOut;
+                // HttpHeaderフィールド名格納
+                pHeaders = new List<HttpHeader>();
+                foreach(MakeJsons.HttpHeaders h in jsn.Headers)
+                {
+                    var hd = new HttpHeader();
+                    // 順位
+                    hd.No = h.No;
+                    // フィールド名
+                    hd.Name = h.FieldName;
+                    pHeaders.Add(hd);
+                }
                 // 決済種別一覧格納
                 PayTypes = new List<PaymentType>();
                 foreach(MakeJsons.Brands b in jsn.BrandLst)
@@ -1019,7 +1042,7 @@ namespace QBCodePay
                             // 結果メッセージ
                             returns.rReturnMessage = userAuthR.ReturnMessage;
                             // 正常処理時
-                            if (returns.rResultCode == cReturnCode)
+                            if (returns.rReturnCode == cReturnCode)
                             {
                                 // 処理結果コード(ユーザー認証リターンの場合はResultCodeが無いので「SUCCESS」を設定しておく)
                                 returns.rResultCode = cResult_Code_SS;
@@ -1297,8 +1320,9 @@ namespace QBCodePay
         /// <returns></returns>
         private void AddHttpHeader(ref HttpRequestMessage request)
         {
-            // ミリ秒(3桁)単位をUNIX時間に変換(13桁)
+            // ミリ秒(3桁)単位をUNIX時間に変換(13桁)---(1)
             var unixTimeStamp = (long)DateTime.Now.Subtract(UNIX_EPOCH).TotalMilliseconds;
+
             request.Headers.Add("X-LAKALA-Time", unixTimeStamp.ToString());
             // ランダム文字列(15桁---半角英数字<英字は大小文字可>)
             string rndm = GetRandomWords(15);
@@ -1330,10 +1354,17 @@ namespace QBCodePay
         {
             // ミリ秒(3桁)単位をUNIX時間に変換(13桁)
             var unixTimeStamp = (long)DateTime.Now.Subtract(UNIX_EPOCH).TotalMilliseconds;
-            client.DefaultRequestHeaders.Add("X-LAKALA-Time", unixTimeStamp.ToString());
+            // Headerフィールド名リストからNo=1のフィールド名を取得
+            var ar1 = (from c in pHeaders where (c.No == 1) select c.Name).ToArray();
+
+            // client.DefaultRequestHeaders.Add("X-LAKALA-Time", unixTimeStamp.ToString());
+            client.DefaultRequestHeaders.Add(ar1[0], unixTimeStamp.ToString());
             // ランダム文字列(15桁---半角英数字<英字は大小文字可>)
             string rndm = GetRandomWords(15);
-            client.DefaultRequestHeaders.Add("X-LAKALA-NonceStr", rndm);
+            // Headerフィールド名リストからNo=2のフィールド名を取得
+            var ar2 = (from c in pHeaders where (c.No == 2) select c.Name).ToArray();
+            // client.DefaultRequestHeaders.Add("X-LAKALA-NonceStr", rndm);
+            client.DefaultRequestHeaders.Add(ar2[0], rndm);
             /* 
              * トークンハッシュ
              * ログインID 、ミリ秒で表される現在の時間、ランダム文字列、 認証キー を
@@ -1343,18 +1374,27 @@ namespace QBCodePay
             string uAUTH = "auth001OK002";  // for TEST
 
             string s = GetTalknHash(uID, unixTimeStamp.ToString(), rndm, uAUTH);
-            client.DefaultRequestHeaders.Add("X-LAKALA-Sign", s);
+            // Headerフィールド名リストからNo=3のフィールド名を取得
+            var ar3 = (from c in pHeaders where (c.No == 3) select c.Name).ToArray();
+            // client.DefaultRequestHeaders.Add("X-LAKALA-Sign", s);
+            client.DefaultRequestHeaders.Add(ar3[0], s);
             /*
              * ログインID
              * 発行した端末ユーザ ID（加盟店管理画面にて作成）
              * ユーザ認証APIのログインIDと同一
              */
-            client.DefaultRequestHeaders.Add("X-LAKALA-loginId", uID);
+            // Headerフィールド名リストからNo=4のフィールド名を取得
+            var ar4 = (from c in pHeaders where (c.No == 4) select c.Name).ToArray();
+            // client.DefaultRequestHeaders.Add("X-LAKALA-loginId", uID);
+            client.DefaultRequestHeaders.Add(ar4[0], uID);
             /*
              * 端末識別番号(半角英数記号 空白可 可変256---但し記号は「-」のみ)
              */
             string uSN = "KONAMISPORTSCLUB-SINAGAWAHONTEN-0001";
-            client.DefaultRequestHeaders.Add("X-LAKALA-serialNo", uSN);
+            // Headerフィールド名リストからNo=5のフィールド名を取得
+            var ar5 = (from c in pHeaders where (c.No == 5) select c.Name).ToArray();
+            // client.DefaultRequestHeaders.Add("X-LAKALA-serialNo", uSN);
+            client.DefaultRequestHeaders.Add(ar5[0], uSN);
 
         }
 

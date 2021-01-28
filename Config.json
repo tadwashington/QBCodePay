@@ -12,6 +12,28 @@
     "postTrdInfCrpUrl": "/portal/queryapi/v1/qr/ordersforpartner",
     "accessPort": 3000
   },
+  "httpheaders": [
+    {
+      "no": 1,
+      "fieldname": "X-GCP-Time"
+    },
+    {
+      "no": 2,
+      "fieldname": "X-GCP-NonceStr"
+    },
+    {
+      "no": 3,
+      "fieldname": "X-GCPGCP-Sign"
+    },
+    {
+      "no": 4,
+      "fieldname": "X-GCPGCP-loginId"
+    },
+    {
+      "no": 5,
+      "fieldname": "X-GCPGCP-serialNo"
+    }
+  ],
   "pollingTimeout": {
     "getPollTime": 2000,
     "cpmTimeOut": 30000,
