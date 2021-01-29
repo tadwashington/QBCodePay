@@ -91,6 +91,10 @@ namespace QBCodePay
             /// エラー時に設定される(エラーコード一覧[qbError.json]に内容記述)
             /// </summary>
             public string rMsgSummary { get; set; }
+            /// <summary>
+            /// 決済種別(ブランド)
+            /// </summary>
+            public string rChannel { get; set; }
         }
         // Returnsインスタンス
         public Returns returns;
@@ -763,7 +767,16 @@ namespace QBCodePay
                                 returns.rResultCode = resp.Result.Result_code;
                                 // 結果メッセージ
                                 returns.rReturnMessage = resp.ReturnMessage;
-
+                                // 決済種別名を取得
+                                var x = (from c in PayTypes where (c.PayKind == resp.Result.Channel) select c.PayName).ToArray();
+                                if (x.Length < 1)
+                                {
+                                    returns.rChannel = "unKnown";
+                                }
+                                else
+                                {
+                                    returns.rChannel = x[0];
+                                }
                                 // 確認のためアイアログ表示
                                 string rs =
                                     string.Format("ReturnCode:{0} \r\n", resp.ReturnCode) +
@@ -777,6 +790,7 @@ namespace QBCodePay
                                     string.Format("Result.Result_code:{0}\r\n", resp.Result.Result_code) +
                                     string.Format("Result.Real_fee:{0}\r\n", resp.Result.Real_fee) +
                                     string.Format("Result.Channel:{0}\r\n", resp.Result.Channel) +
+                                    string.Format("Result.PayKind:{0}\r\n", returns.rChannel) +
                                     string.Format("Result.Create_time:{0}\r\n", resp.Result.Create_time) +
                                     string.Format("Result.Total_fee:{0}\r\n", resp.Result.Total_fee) +
                                     string.Format("Result.Pay_time:{0}\r\n", resp.Result.Pay_time) +
@@ -827,7 +841,16 @@ namespace QBCodePay
                                 // 正常時
                                 // 処理結果コード
                                 returns.rResultCode = reFoundC.Result.Result_code;
-
+                                // 決済種別名を取得
+                                var x = (from c in PayTypes where (c.PayKind == reFoundC.Result.Channel) select c.PayName).ToArray();
+                                if (x.Length < 1)
+                                {
+                                    returns.rChannel = "unKnown";
+                                }
+                                else
+                                {
+                                    returns.rChannel = x[0];
+                                }
                                 // 確認のためアイアログ表示
                                 string rs =
                                     string.Format("ReturnCode:{0}\r\n", reFoundC.ReturnCode) +
@@ -842,6 +865,7 @@ namespace QBCodePay
                                     string.Format("Result.Partner_order_id:{0}\r\n", reFoundC.Result.Partner_order_id) +
                                     string.Format("Result.Total_fee:{0}\r\n", reFoundC.Result.Amount) +
                                     string.Format("Result.Channel:{0}\r\n", reFoundC.Result.Channel) +
+                                    string.Format("Result.PayKind:{0}\r\n", returns.rChannel) +
                                     string.Format("Result.Order_id:{0}\r\n", reFoundC.Result.Order_id) +
                                     string.Format("Result.Create_time:{0}\r\n", reFoundC.Result.Create_time) +
                                     string.Format("Result.Pay_time:{0}\r\n", reFoundC.Result.Pay_time) +
@@ -1184,6 +1208,16 @@ namespace QBCodePay
                                  */
                                 // 処理結果コード
                                 returns.rResultCode = cpm.Result.Result_code;
+                                // 決済種別名を取得
+                                var x = (from c in PayTypes where (c.PayKind == cpm.Result.Channel) select c.PayName).ToArray();
+                                if (x.Length < 1)
+                                {
+                                    returns.rChannel = "unKnown";
+                                }
+                                else
+                                {
+                                    returns.rChannel = x[0];
+                                }
                                 // 確認のためアイアログ表示
                                 string cpmres =
                                     string.Format("ReturnCode:{0}", cpm.ReturnCode) + "\r\n" +
@@ -1199,6 +1233,7 @@ namespace QBCodePay
                                     string.Format("Result.Total_fee:{0}", cpm.Result.Total_fee.ToString()) + "\r\n" +
                                     string.Format("Result.Real_fee:{0}", cpm.Result.Real_fee.ToString()) + "\r\n" +
                                     string.Format("Result.Channel:{0}", cpm.Result.Channel) + "\r\n" +
+                                    string.Format("Result.PayKind:{0}", returns.rChannel) + "\r\n" +
                                     string.Format("Result.Pay_time:{0}", cpm.Result.Pay_time) + "\r\n" +
                                     string.Format("Result.Order_body:{0}", cpm.Result.Order_body) + "\r\n" +
                                     string.Format("BalanceAmount:{0}", cpm.BalanceAmount)
@@ -1231,38 +1266,68 @@ namespace QBCodePay
                             returns = new Returns();
                             // 結果コード
                             returns.rReturnCode = reFoundR.ReturnCode;
-                            // 処理結果コード
-                            returns.rResultCode = reFoundR.Result.Result_code;
                             // 結果メッセージ
                             returns.rReturnMessage = reFoundR.ReturnMessage;
                             // 集計結果コード
                             returns.rMsgSummaryCode = reFoundR.MsgSummaryCode;
                             // 集計結果メッセージ
                             returns.rMsgSummary = reFoundR.MsgSummary;
+                            if (returns.rReturnCode == cReturnCode)
+                            {
+                                // 処理結果コード
+                                returns.rResultCode = reFoundR.Result.Result_code;
+                                // 決済種別名を取得
+                                var x = (from c in PayTypes where (c.PayKind == reFoundR.Result.Channel) select c.PayName).ToArray();
+                                if (x.Length < 1)
+                                {
+                                    returns.rChannel = "unKnown";
+                                }
+                                else
+                                {
+                                    returns.rChannel = x[0];
+                                }
 
-                            // 確認のためアイアログ表示
-                            string cpmres =
-                                string.Format("ReturnCode:{0}", reFoundR.ReturnCode) + "\r\n" +
-                                string.Format("ReturnMessage:{0}", reFoundR.ReturnMessage) + "\r\n" +
-                                string.Format("MsgSummaryCode:{0}", reFoundR.MsgSummaryCode) + "\r\n" +
-                                string.Format("MsgSummary:{0}", reFoundR.MsgSummary) + "\r\n" +
-                                string.Format("Result.Partner_refund_id:{0}", reFoundR.Result.Partner_refund_id) + "\r\n" +
-                                string.Format("Result.Refund_id:{0}", reFoundR.Result.Refund_id) + "\r\n" +
-                                string.Format("Result.Currency:{0}", reFoundR.Result.Currency) + "\r\n" +
-                                string.Format("Result.Return_code:{0}", reFoundR.Result.Return_code) + "\r\n" +
-                                string.Format("Result.Result_code:{0}", reFoundR.Result.Result_code) + "\r\n" +
-                                string.Format("Result.Partner_order_id:{0}", reFoundR.Result.Partner_order_id) + "\r\n" +
-                                string.Format("Result.Total_fee:{0}", reFoundR.Result.Amount.ToString()) + "\r\n" +
-                                string.Format("Result.Channel:{0}", reFoundR.Result.Channel) + "\r\n" +
-                                string.Format("Result.Order_id:{0}", reFoundR.Result.Order_id) + "\r\n" +
-                                string.Format("Result.Create_time:{0}", reFoundR.Result.Create_time) + "\r\n" +
-                                string.Format("Result.Pay_time:{0}", reFoundR.Result.Pay_time) + "\r\n" +
-                                string.Format("Result.Total_fee:{0}", reFoundR.Result.Total_fee.ToString()) + "\r\n" +
-                                string.Format("Result.Real_fee:{0}", reFoundR.Result.Real_fee.ToString())
-                                ;
+                                // 確認のためアイアログ表示
+                                string cpmres =
+                                    string.Format("ReturnCode:{0}", reFoundR.ReturnCode) + "\r\n" +
+                                    string.Format("ReturnMessage:{0}", reFoundR.ReturnMessage) + "\r\n" +
+                                    string.Format("MsgSummaryCode:{0}", reFoundR.MsgSummaryCode) + "\r\n" +
+                                    string.Format("MsgSummary:{0}", reFoundR.MsgSummary) + "\r\n" +
+                                    string.Format("Result.Partner_refund_id:{0}", reFoundR.Result.Partner_refund_id) + "\r\n" +
+                                    string.Format("Result.Refund_id:{0}", reFoundR.Result.Refund_id) + "\r\n" +
+                                    string.Format("Result.Currency:{0}", reFoundR.Result.Currency) + "\r\n" +
+                                    string.Format("Result.Return_code:{0}", reFoundR.Result.Return_code) + "\r\n" +
+                                    string.Format("Result.Result_code:{0}", reFoundR.Result.Result_code) + "\r\n" +
+                                    string.Format("Result.Partner_order_id:{0}", reFoundR.Result.Partner_order_id) + "\r\n" +
+                                    string.Format("Result.Total_fee:{0}", reFoundR.Result.Amount.ToString()) + "\r\n" +
+                                    string.Format("Result.Channel:{0}", reFoundR.Result.Channel) + "\r\n" +
+                                    string.Format("Result.PayKind:{0}", returns.rChannel) + "\r\n" +
+                                    string.Format("Result.Order_id:{0}", reFoundR.Result.Order_id) + "\r\n" +
+                                    string.Format("Result.Create_time:{0}", reFoundR.Result.Create_time) + "\r\n" +
+                                    string.Format("Result.Pay_time:{0}", reFoundR.Result.Pay_time) + "\r\n" +
+                                    string.Format("Result.Total_fee:{0}", reFoundR.Result.Total_fee.ToString()) + "\r\n" +
+                                    string.Format("Result.Real_fee:{0}", reFoundR.Result.Real_fee.ToString())
+                                    ;
 
-                            Console.WriteLine(cpmres, "帰ってきたjsonパラメタ");
+                                Console.WriteLine(cpmres, "帰ってきたjsonパラメタ");
 
+                            }
+                            else
+                            {
+                                // エラー
+                                // 確認のためアイアログ表示
+                                string cpmres =
+                                    string.Format("ReturnCode:{0}", reFoundR.ReturnCode) + "\r\n" +
+                                    string.Format("ReturnMessage:{0}", reFoundR.ReturnMessage) + "\r\n" +
+                                    string.Format("MsgSummaryCode:{0}", reFoundR.MsgSummaryCode) + "\r\n" +
+                                    string.Format("MsgSummary:{0}", reFoundR.MsgSummary) + "\r\n" +
+                                    string.Format("BalanceAmount:{0}", reFoundR.BalanceAmount)
+                                    ;
+                                // falseを設定
+                                rtn = false;
+                                Console.WriteLine(cpmres, "帰ってきたjsonパラメタ");
+
+                            }
                         }
                         // 処理正常でかつ支払完了時または返金確認完了時のみ支払確認または返金確認処理をさせない
                         if ((returns.rReturnCode == cReturnCode) && 
