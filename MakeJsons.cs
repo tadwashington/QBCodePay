@@ -393,7 +393,7 @@ namespace QBCodePay
             /// 決済種別ID
             /// </summary>
             [JsonProperty("payTypeId")]
-            public string PayTypeId;
+            public int PayTypeId;
             /// <summary>
             /// 決済種別コード
             /// </summary>
@@ -542,12 +542,12 @@ namespace QBCodePay
             /// 要求決済金額
             /// </summary>
             [JsonProperty("total_fee")]
-            public string Total_fee;
+            public int Total_fee;
             /// <summary>
             /// 決済金額
             /// </summary>
             [JsonProperty("real_fee")]
-            public string Real_fee;
+            public int Real_fee;
             /// <summary>
             /// 決済種別
             /// </summary>
@@ -618,7 +618,7 @@ namespace QBCodePay
             /// 削除予定フィールド
             /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
             [JsonProperty("Refund_fee")]
-            public string Refund_fee;
+            public int Refund_fee;
             /// 削除予定フィールド
             /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
             [JsonProperty("sum_refund_fee")]
@@ -785,7 +785,7 @@ namespace QBCodePay
             /// 支払金額
             /// </summary>
             [JsonProperty("real_fee")]
-            public string Real_fee;
+            public int Real_fee;
             /// <summary>
             /// 決済種別
             /// </summary>
@@ -800,7 +800,7 @@ namespace QBCodePay
             /// 要求決済金額
             /// </summary>
             [JsonProperty("total_fee")]
-            public string Total_fee;
+            public int Total_fee;
             /// <summary>
             /// 支払日時
             /// </summary>
@@ -810,7 +810,7 @@ namespace QBCodePay
             /// 返金金額
             /// </summary>
             [JsonProperty("refund_fee")]
-            public string Refund_fee;
+            public int Refund_fee;
             /// <summary>
             /// 取引備考
             /// </summary>
@@ -1090,7 +1090,7 @@ namespace QBCodePay
             /// 半角数字(8桁可変)
             /// </summary>
             [JsonProperty("amount")]
-            public string Amount;
+            public int Amount;
             /// <summary>
             /// 決済種別
             /// 半角英字(8桁可変)
@@ -1121,13 +1121,13 @@ namespace QBCodePay
             /// 半角数字(8桁可変)-元支払伝票の決済リクエスト時の決済金額
             /// </summary>
             [JsonProperty("total_fee")]
-            public string Total_fee;
+            public int Total_fee;
             /// <summary>
             /// 決済金額
             /// 半角数字(8桁可変)-要求決済金額と同じ値
             /// </summary>
             [JsonProperty("real_fee")]
-            public string Real_fee;
+            public int Real_fee;
             /// 削除予定フィールド
             /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
             [JsonProperty("sum_refund_fee")]
@@ -1187,7 +1187,7 @@ namespace QBCodePay
             /// 削除予定フィールド
             /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
             [JsonProperty("refund_fee")]
-            public string Refund_fee;
+            public int Refund_fee;
             /// 削除予定フィールド
             /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
             [JsonProperty("tip_amount")]
@@ -1286,7 +1286,7 @@ namespace QBCodePay
             /// 半角数字8桁可変
             /// </summary>
             [JsonProperty("amount")]
-            public string Amount;
+            public int Amount;
             /// <summary>
             /// 決済種別
             /// 半角英字8桁可変
@@ -1317,13 +1317,13 @@ namespace QBCodePay
             /// 半角数字8桁可変
             /// </summary>
             [JsonProperty("total_fee")]
-            public string Total_fee;
+            public int Total_fee;
             /// <summary>
             /// 支払金額
             /// 半角数字8桁可変
             /// </summary>
             [JsonProperty("real_fee")]
-            public string Real_fee;
+            public int Real_fee;
             /// 削除予定フィールド
             /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
             [JsonProperty("sum_refund_fee")]
@@ -1335,7 +1335,7 @@ namespace QBCodePay
             /// 削除予定フィールド
             /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
             [JsonProperty("refund_fee")]
-            public string Refund_fee;
+            public int Refund_fee;
             /// 削除予定フィールド
             /// 当該フィールドが存在しない場合でもエラーを起こさないよう注意
             [JsonProperty("codeUrl")]
@@ -1597,13 +1597,13 @@ namespace QBCodePay
             /// 半角数字8桁可変
             /// </summary>
             [JsonProperty("real_fee")]
-            public string Real_fee;
+            public int Real_fee;
             /// <summary>
             /// 返金金額合計
             /// 半角数字8桁可変
             /// </summary>
             [JsonProperty("sum_refund_fee")]
-            public string Sum_refund_fee;
+            public int Sum_refund_fee;
             /// <summary>
             /// 取引日時
             /// 半角数字記号19桁固定
@@ -1615,7 +1615,7 @@ namespace QBCodePay
             /// 半角数字8桁可変
             /// </summary>
             [JsonProperty("total_fee")]
-            public string Total_fee;
+            public int Total_fee;
             /// <summary>
             /// 取引備考
             /// 全半角文字50byte可変
@@ -1645,7 +1645,7 @@ namespace QBCodePay
             /// 半角数字8桁可変
             /// </summary>
             [JsonProperty("refund_fee")]
-            public string Refund_fee;
+            public int Refund_fee;
             /// <summary>
             /// これ以降は削除予定項目
             /// </summary>

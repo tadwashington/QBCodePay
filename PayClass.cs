@@ -246,7 +246,7 @@ namespace QBCodePay
             bool rtn = false;
             try
             {
-                var pt = File.ReadAllText(@"./Config.json", Encoding.UTF8);
+                var pt = File.ReadAllText(@"./QBConfig.json", Encoding.UTF8);
                 MakeJsons.Configure jsn = new MakeJsons.Configure();
                 jsn = JsonConvert.DeserializeObject<MakeJsons.Configure>(pt);
                 /*
@@ -719,13 +719,13 @@ namespace QBCodePay
                                     string.Format("Result.Order_id:{0}\r\n", resp.Result.Order_id) +
                                     string.Format("Result.Return_code:{0}\r\n", resp.Result.Return_code) +
                                     string.Format("Result.Result_code:{0}\r\n", resp.Result.Result_code) +
-                                    string.Format("Result.Real_fee:{0}\r\n", resp.Result.Real_fee) +
+                                    string.Format("Result.Real_fee:{0}\r\n", resp.Result.Real_fee.ToString()) +
                                     string.Format("Result.Channel:{0}\r\n", resp.Result.Channel) +
                                     string.Format("Result.PayKind:{0}\r\n", returns.rChannel) +
                                     string.Format("Result.Create_time:{0}\r\n", resp.Result.Create_time) +
-                                    string.Format("Result.Total_fee:{0}\r\n", resp.Result.Total_fee) +
+                                    string.Format("Result.Total_fee:{0}\r\n", resp.Result.Total_fee.ToString()) +
                                     string.Format("Result.Pay_time:{0}\r\n", resp.Result.Pay_time) +
-                                    string.Format("Result.Refund_fee:{0}\r\n", resp.Result.Refund_fee) +
+                                    string.Format("Result.Refund_fee:{0}\r\n", resp.Result.Refund_fee.ToString()) +
                                     string.Format("Result.Order_body:{0}\r\n", resp.Result.Order_body) +
                                     string.Format("Result.Status:{0}\r\n", resp.Result.Status) +
                                     string.Format("Result.PartialRefundFlag:{0}\r\n", resp.Result.PartialRefundFlag) +
@@ -794,14 +794,14 @@ namespace QBCodePay
                                     string.Format("Result.Return_code:{0}\r\n", reFoundC.Result.Return_code) +
                                     string.Format("Result.Result_code:{0}\r\n", reFoundC.Result.Result_code) +
                                     string.Format("Result.Partner_order_id:{0}\r\n", reFoundC.Result.Partner_order_id) +
-                                    string.Format("Result.Total_fee:{0}\r\n", reFoundC.Result.Amount) +
+                                    string.Format("Result.Total_fee:{0}\r\n", reFoundC.Result.Amount.ToString()) +
                                     string.Format("Result.Channel:{0}\r\n", reFoundC.Result.Channel) +
                                     string.Format("Result.PayKind:{0}\r\n", returns.rChannel) +
                                     string.Format("Result.Order_id:{0}\r\n", reFoundC.Result.Order_id) +
                                     string.Format("Result.Create_time:{0}\r\n", reFoundC.Result.Create_time) +
                                     string.Format("Result.Pay_time:{0}\r\n", reFoundC.Result.Pay_time) +
-                                    string.Format("Result.Total_fee:{0}\r\n", reFoundC.Result.Total_fee) +
-                                    string.Format("Result.Real_fee:{0}\r\n", reFoundC.Result.Real_fee)
+                                    string.Format("Result.Total_fee:{0}\r\n", reFoundC.Result.Total_fee.ToString()) +
+                                    string.Format("Result.Real_fee:{0}\r\n", reFoundC.Result.Real_fee.ToString())
                                     ;
 
                                 Console.WriteLine(rs);
@@ -862,12 +862,12 @@ namespace QBCodePay
                                         string.Format("line.Currency:{0}\r\n", line.Currency) +
                                         string.Format("line.Create_time:{0}\r\n", line.Create_time) +
                                         string.Format("line.Channel:{0}\r\n", line.Channel) +
-                                        string.Format("line.Real_fee:{0}\r\n", line.Real_fee) +
+                                        string.Format("line.Real_fee:{0}\r\n", line.Real_fee.ToString()) +
                                         string.Format("line.Order_body:{0}\r\n", line.Order_body) +
                                         string.Format("line.Order_id:{0}\r\n", line.Order_id) +
                                         string.Format("line.Partner_refund_id:{0}\r\n", line.Partner_refund_id) +
                                         string.Format("line.Refund_id:{0}\r\n", line.Refund_id) +
-                                        string.Format("line.Refund_fee:{0}\r\n", line.Refund_fee);
+                                        string.Format("line.Refund_fee:{0}\r\n", line.Refund_fee.ToString());
                                 }
                                 rs += "*** END ***";
                                 Console.WriteLine(rs);
